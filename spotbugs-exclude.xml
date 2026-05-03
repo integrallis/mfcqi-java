@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!--
+        Project-wide SpotBugs exclusions for mfcqi-java.
+
+        Add narrowly scoped exclusions here as the codebase grows. Prefer fixing
+        the underlying issue over excluding it. Each exclusion should have a
+        comment explaining why it is intentional.
+    -->
+</FindBugsFilter>
