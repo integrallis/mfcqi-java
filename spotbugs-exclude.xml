@@ -7,4 +7,13 @@
         the underlying issue over excluding it. Each exclusion should have a
         comment explaining why it is intentional.
     -->
+
+    <!-- mfcqi-metrics: ParsedFile is an internal carrier shared across visitors. Returning the
+         CompilationUnit by reference is intentional zero-copy access; defensive cloning would
+         force every visitor to re-parse and would make the metric pipeline orders of magnitude
+         slower. Visitors must not mutate the CU. -->
+    <Match>
+        <Class name="com.integrallis.mfcqi.metrics.internal.ParsedFile"/>
+        <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
 </FindBugsFilter>
