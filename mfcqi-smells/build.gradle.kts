@@ -3,4 +3,5 @@ description =
 
 dependencies {
     "api"(project(":mfcqi-core"))
+    "implementation"("com.github.javaparser:javaparser-core:3.26.4")
 }

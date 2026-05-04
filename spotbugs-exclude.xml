@@ -16,4 +16,10 @@
         <Class name="com.integrallis.mfcqi.metrics.internal.ParsedFile"/>
         <Bug pattern="EI_EXPOSE_REP"/>
     </Match>
+
+    <!-- mfcqi-smells: Same intentional zero-copy AST sharing as mfcqi-metrics' ParsedFile. -->
+    <Match>
+        <Class name="com.integrallis.mfcqi.smells.internal.SourceTrees$ParsedSource"/>
+        <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
 </FindBugsFilter>
