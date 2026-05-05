@@ -5,6 +5,8 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.integrallis.mfcqi.analysis.ToolOutputs;
 import com.integrallis.mfcqi.core.JavaSourceFiles;
+import com.integrallis.mfcqi.metrics.CyclomaticComplexity;
+import com.integrallis.mfcqi.metrics.HalsteadVolume;
 import com.integrallis.mfcqi.security.JavaSecurityScanner;
 import com.integrallis.mfcqi.security.SecurityFinding;
 import java.io.IOException;
@@ -45,15 +47,21 @@ public final class ToolOutputCollector {
     b.bandit(collectSecurityIssues(codebase));
     b.complexity(collectComplexityHotspots(files));
 
-    Double cc = normalizedScores.get("Cyclomatic Complexity");
-    if (cc != null) {
-      // We only have the normalized value here; the raw section in the prompt uses 0 to mean
-      // "not available". A future enhancement would expose raw averages from the metric.
-      b.cyclomaticComplexityRaw(0.0);
-    }
-    Double hv = normalizedScores.get("Halstead Volume");
-    if (hv != null) {
-      b.halsteadVolumeRaw(0.0);
+    // Raw averages — extract() on these metrics returns the un-normalized average across files.
+    // Calling extract() twice (once for the score, once here) is intentional: the public Metric
+    // API doesn't expose intermediate state and we want the LLM prompt sections to be populated
+    // with concrete numbers, not silently zeroed out as before.
+    if (!files.isEmpty()) {
+      try {
+        b.cyclomaticComplexityRaw(new CyclomaticComplexity().extract(codebase));
+      } catch (RuntimeException e) {
+        // Match the source's silent-skip pattern: a parse failure shouldn't break recommendations.
+      }
+      try {
+        b.halsteadVolumeRaw(new HalsteadVolume().extract(codebase));
+      } catch (RuntimeException e) {
+        // Match the source's silent-skip pattern.
+      }
     }
 
     return b.build();

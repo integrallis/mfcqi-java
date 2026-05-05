@@ -176,6 +176,28 @@ class AnalyzeCommandTest {
   }
 
   @Test
+  void toolOutputCollector_populatesRawCcAndHvForRealCode(@TempDir Path tmp) throws Exception {
+    // Round-2 review Low E: raw CC/HV in tool outputs must be real averages, not placeholder 0.0.
+    Path src = Files.createDirectories(tmp.resolve("src/main/java"));
+    Files.writeString(
+        src.resolve("Sample.java"),
+        "public class Sample {\n"
+            + "  public int score(int x, int y) {\n"
+            + "    if (x > 0 && y > 0) {\n"
+            + "      for (int i = 0; i < x; i++) {\n"
+            + "        if (i % 2 == 0) { y += i; } else { y -= i; }\n"
+            + "      }\n"
+            + "    }\n"
+            + "    return y;\n"
+            + "  }\n"
+            + "}");
+    com.integrallis.mfcqi.analysis.ToolOutputs out =
+        com.integrallis.mfcqi.cli.ToolOutputCollector.collect(tmp, new LinkedHashMap<>());
+    assertThat(out.getCyclomaticComplexityRaw()).isGreaterThan(0.0);
+    assertThat(out.getHalsteadVolumeRaw()).isGreaterThan(0.0);
+  }
+
+  @Test
   void cli_invocationPrintsAnalysis(@TempDir Path tmp) throws Exception {
     Path src = Files.createDirectories(tmp.resolve("src/main/java"));
     Files.writeString(
