@@ -1,0 +1,37 @@
+You are an expert software engineer conducting a comprehensive Java code quality assessment.
+
+PROJECT CONTEXT:
+================
+Path: {{ codebase_path }}
+MFCQI Score: {{ mfcqi_score }}
+
+METRICS SUMMARY:
+================
+{% for entry in metrics %}
+{% if entry.value <= 0.3 %}CRITICAL{% elseif entry.value <= 0.6 %}WARNING{% elseif entry.value >= 0.8 %}GOOD{% else %}FAIR{% endif %}: {{ entry.key }}: {{ entry.value }}
+{% endfor %}
+
+{% if critical_metrics is not empty %}
+CRITICAL ISSUES REQUIRING IMMEDIATE ATTENTION:
+==============================================
+{% for metric in critical_metrics %}
+- {{ metric.name }} (Score: {{ metric.score }})
+{% endfor %}
+{% endif %}
+
+ANALYSIS TASK:
+==============
+Generate {{ recommendation_count }} recommendations for the lowest-scoring metrics above. Use the EXACT format below — recommendations are separated by starting each one with "##".
+
+Output Format (one recommendation per metric):
+You MUST use this exact format for EACH recommendation:
+
+## [SEVERITY] Fix [Specific Issue] in [Area]
+
+**Description:** One-sentence description of the issue
+**Solution:** Brief fix (1-2 sentences, no code examples)
+**Impact:** Expected metric improvement
+
+IMPORTANT: Start EACH new recommendation with "## [" — this is the delimiter used to separate recommendations.
+
+Generate all {{ recommendation_count }} recommendations now, starting each with "##":
