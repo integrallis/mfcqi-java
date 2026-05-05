@@ -54,7 +54,7 @@ public final class AnalyzeCommand implements Callable<Integer> {
 
   @Option(
       names = {"--format", "-f"},
-      description = "Output format: terminal, json, markdown, sarif. Default: terminal.")
+      description = "Output format: terminal, json, html, markdown, sarif. Default: terminal.")
   String format = "terminal";
 
   @Option(
@@ -238,6 +238,8 @@ public final class AnalyzeCommand implements Callable<Integer> {
     switch (fmt) {
       case "json":
         return renderJson(codebasePath, score, metrics, llm);
+      case "html":
+        return renderHtml(codebasePath, score, metrics, llm);
       case "markdown":
         return renderMarkdown(codebasePath, score, metrics, llm);
       case "sarif":
@@ -246,6 +248,98 @@ public final class AnalyzeCommand implements Callable<Integer> {
       default:
         return renderTerminal(codebasePath, score, metrics, llm);
     }
+  }
+
+  /**
+   * HTML report — direct port of {@code mfcqi/cli/utils/output.py:_format_html_output}. Inline
+   * styles match the Python source (color thresholds 0.8/0.6, score emoji ladder 0.9/0.8/0.7/0.6).
+   */
+  static String renderHtml(
+      Path codebasePath, double score, Map<String, Double> metrics, AnalysisResult llm) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("<!DOCTYPE html>\n<html>\n<head>\n");
+    sb.append("    <title>MFCQI Analysis Report</title>\n");
+    sb.append("    <style>\n");
+    sb.append("        body { font-family: Arial, sans-serif; margin: 40px; }\n");
+    sb.append("        .score { font-size: 24px; font-weight: bold; color: ")
+        .append(scoreColorHex(score))
+        .append("; }\n");
+    sb.append("        .metric { margin: 10px 0; }\n");
+    sb.append("        .recommendations { margin-top: 20px; }\n");
+    sb.append(
+        "        .recommendation { margin: 8px 0; padding: 8px; background: #f5f5f5; border-radius: 4px; }\n");
+    sb.append("    </style>\n</head>\n<body>\n");
+    sb.append("    <h1>MFCQI Analysis Report</h1>\n");
+    sb.append("    <div class=\"score\">Codebase: ")
+        .append(escapeHtml(codebasePath.toString()))
+        .append("</div>\n");
+    sb.append("    <div class=\"score\">Overall Score: ")
+        .append(String.format(Locale.ROOT, "%.2f", score))
+        .append("/1.0 ")
+        .append(scoreEmoji(score))
+        .append("</div>\n");
+    sb.append("    <h2>Metrics</h2>\n");
+    for (Map.Entry<String, Double> e : metrics.entrySet()) {
+      if ("mfcqi_score".equals(e.getKey())) {
+        continue;
+      }
+      sb.append("    <div class=\"metric\"><strong>")
+          .append(escapeHtml(e.getKey()))
+          .append(":</strong> ")
+          .append(String.format(Locale.ROOT, "%.2f", e.getValue()))
+          .append("</div>\n");
+    }
+    if (llm != null && !llm.recommendations().isEmpty()) {
+      sb.append("    <h2>AI Recommendations</h2>\n    <div class=\"recommendations\">\n");
+      int i = 1;
+      for (String rec : llm.recommendations()) {
+        sb.append("        <div class=\"recommendation\">")
+            .append(i)
+            .append(". ")
+            .append(escapeHtml(rec))
+            .append("</div>\n");
+        i++;
+      }
+      sb.append("    </div>\n");
+    }
+    sb.append("</body>\n</html>\n");
+    return sb.toString();
+  }
+
+  /** Verbatim port of Python's {@code _get_score_color_hex}. */
+  static String scoreColorHex(double score) {
+    if (score >= 0.8) {
+      return "#00aa00";
+    }
+    if (score >= 0.6) {
+      return "#ffaa00";
+    }
+    return "#aa0000";
+  }
+
+  /** Verbatim port of Python's {@code _get_score_emoji} (kept ASCII-only labels). */
+  static String scoreEmoji(double score) {
+    if (score >= 0.9) {
+      return "[trophy]";
+    }
+    if (score >= 0.8) {
+      return "[star]";
+    }
+    if (score >= 0.7) {
+      return "[ok]";
+    }
+    if (score >= 0.6) {
+      return "[warn]";
+    }
+    return "[fail]";
+  }
+
+  private static String escapeHtml(String s) {
+    return s.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#39;");
   }
 
   static String renderTerminal(

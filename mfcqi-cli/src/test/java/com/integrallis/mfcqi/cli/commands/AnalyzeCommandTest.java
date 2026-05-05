@@ -62,6 +62,52 @@ class AnalyzeCommandTest {
   }
 
   @Test
+  void render_htmlHasStyledScoreAndMetrics(@TempDir Path tmp) {
+    Map<String, Double> metrics = new LinkedHashMap<>();
+    metrics.put("mfcqi_score", 0.85);
+    metrics.put("security", 0.42);
+    String html = AnalyzeCommand.renderHtml(tmp, 0.85, metrics, null);
+    assertThat(html).contains("<!DOCTYPE html>");
+    assertThat(html).contains("MFCQI Analysis Report");
+    // Score color: 0.85 -> green hex from Python.
+    assertThat(html).contains("color: #00aa00");
+    // Metric row.
+    assertThat(html).contains("<strong>security:</strong> 0.42");
+  }
+
+  @Test
+  void render_htmlIncludesRecommendationsWhenPresent(@TempDir Path tmp) {
+    Map<String, Double> metrics = new LinkedHashMap<>();
+    metrics.put("mfcqi_score", 0.5);
+    metrics.put("security", 0.3);
+    com.integrallis.mfcqi.analysis.AnalysisResult llm =
+        new com.integrallis.mfcqi.analysis.AnalysisResult(
+            0.5,
+            metrics,
+            java.util.Arrays.asList("[HIGH] Fix MD5 in Crypto.java"),
+            "claude-sonnet-4-5");
+    String html = AnalyzeCommand.renderHtml(tmp, 0.5, metrics, llm);
+    assertThat(html).contains("AI Recommendations");
+    assertThat(html).contains("Fix MD5 in Crypto.java");
+  }
+
+  @Test
+  void render_htmlEscapesAngleBrackets(@TempDir Path tmp) {
+    Map<String, Double> metrics = new LinkedHashMap<>();
+    metrics.put("mfcqi_score", 0.5);
+    metrics.put("<script>alert('xss')</script>", 0.5);
+    String html = AnalyzeCommand.renderHtml(tmp, 0.5, metrics, null);
+    assertThat(html).doesNotContain("<script>alert").contains("&lt;script&gt;");
+  }
+
+  @Test
+  void scoreColorHex_followsPythonThresholds() {
+    assertThat(AnalyzeCommand.scoreColorHex(0.85)).isEqualTo("#00aa00");
+    assertThat(AnalyzeCommand.scoreColorHex(0.65)).isEqualTo("#ffaa00");
+    assertThat(AnalyzeCommand.scoreColorHex(0.20)).isEqualTo("#aa0000");
+  }
+
+  @Test
   void render_markdownHasTable(@TempDir Path tmp) {
     Map<String, Double> metrics = new LinkedHashMap<>();
     metrics.put("mfcqi_score", 0.7);
