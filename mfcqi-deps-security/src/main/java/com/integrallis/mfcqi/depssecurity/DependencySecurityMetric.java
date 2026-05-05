@@ -45,6 +45,11 @@ public final class DependencySecurityMetric extends Metric<Double> {
     this.scanner = Objects.requireNonNull(scanner, "scanner");
   }
 
+  /** The {@link VulnerabilityScanner} this metric will dispatch each dependency to. */
+  public VulnerabilityScanner scanner() {
+    return scanner;
+  }
+
   @Override
   protected boolean validateCodebase(Path codebase) {
     return codebase != null

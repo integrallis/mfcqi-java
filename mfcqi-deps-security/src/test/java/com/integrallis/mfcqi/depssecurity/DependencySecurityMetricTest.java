@@ -58,12 +58,20 @@ class DependencySecurityMetricTest {
   @Test
   void defaultConstructor_wiresOsvScanner() {
     // The Python source's pip-audit equivalent for Java is OSV.dev (no API key, public). The
-    // default ctor must wire that, not the offline no-op — see review feedback.
+    // default ctor must wire that, not the offline no-op. Stronger than the previous "non-null"
+    // assertion: pin the scanner *type* so a regression back to OfflineNoOpScanner would be
+    // caught immediately.
     DependencySecurityMetric metric = new DependencySecurityMetric();
-    // We don't perform a real network query in unit tests; just assert the metric is wired with
-    // a scanner that isn't the offline stub. We reflectively peek via the scan() call shape.
-    // Tests against a stub above already cover the calculation algebra.
-    assertThat(metric).isNotNull();
+    assertThat(metric.scanner()).isInstanceOf(OsvVulnerabilityScanner.class);
+    assertThat(metric.scanner()).isNotInstanceOf(OfflineNoOpScanner.class);
+  }
+
+  @Test
+  void explicitConstructor_keepsTheInjectedScanner() {
+    // Symmetric guarantee: opt-out path keeps OfflineNoOpScanner so deterministic tests don't
+    // accidentally hit the network.
+    DependencySecurityMetric metric = new DependencySecurityMetric(new OfflineNoOpScanner());
+    assertThat(metric.scanner()).isInstanceOf(OfflineNoOpScanner.class);
   }
 
   @Test
