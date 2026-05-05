@@ -11,4 +11,9 @@ dependencies {
     "implementation"(project(":mfcqi-analysis"))
     "implementation"(project(":mfcqi-quality-gates"))
     "implementation"(project(":mfcqi-badge"))
+    // Picocli — Apache 2.0, no API key. Annotation processor is recommended for help-output
+    // generation but optional; we keep the build lean by skipping it.
+    "implementation"("info.picocli:picocli:4.7.6")
+    // Jackson for JSON output of analyze results (already a transitive dep).
+    "implementation"("com.fasterxml.jackson.core:jackson-databind:2.18.2")
 }
