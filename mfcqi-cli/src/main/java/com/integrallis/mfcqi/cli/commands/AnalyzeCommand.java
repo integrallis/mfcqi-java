@@ -319,46 +319,251 @@ public final class AnalyzeCommand implements Callable<Integer> {
     }
   }
 
-  /** Minimal SARIF 2.1.0 envelope — superseded by the richer renderer in a follow-up commit. */
+  /**
+   * SARIF 2.1.0 envelope — direct port of {@code mfcqi/cli/utils/output.py:_format_as_sarif}.
+   * Driver metadata + a rule per metric (with description and helpUri) + one result per metric +
+   * one result per overall score + each LLM recommendation as a {@code note}-level result.
+   */
   static String renderSarif(
       Path codebasePath, double score, Map<String, Double> metrics, AnalysisResult llm) {
-    Map<String, Object> tool = new LinkedHashMap<>();
+    Map<String, Double> ms = new LinkedHashMap<>(metrics);
+    ms.remove("mfcqi_score");
+
     Map<String, Object> driver = new LinkedHashMap<>();
-    driver.put("name", "mfcqi-java");
+    driver.put("name", "MFCQI");
     driver.put("version", "0.1.0-SNAPSHOT");
+    driver.put("informationUri", "https://github.com/bsbodden/mfcqi");
+    driver.put("semanticVersion", "0.1.0-SNAPSHOT");
+    driver.put("rules", buildSarifRules(ms));
+
+    Map<String, Object> tool = new LinkedHashMap<>();
     tool.put("driver", driver);
 
-    java.util.List<Map<String, Object>> results = new java.util.ArrayList<>();
-    for (Map.Entry<String, Double> e : metrics.entrySet()) {
-      if ("mfcqi_score".equals(e.getKey()) || e.getValue() >= 0.6) {
-        continue;
-      }
-      Map<String, Object> r = new LinkedHashMap<>();
-      r.put("ruleId", "mfcqi/" + e.getKey().toLowerCase(Locale.ROOT).replace(' ', '-'));
-      Map<String, Object> message = new LinkedHashMap<>();
-      message.put(
-          "text",
-          e.getKey()
-              + " score "
-              + String.format(Locale.ROOT, "%.3f", e.getValue())
-              + " is below the warning threshold (0.60).");
-      r.put("message", message);
-      r.put("level", e.getValue() < 0.3 ? "error" : "warning");
-      results.add(r);
-    }
-
+    java.util.List<String> recommendations =
+        llm == null ? java.util.Collections.emptyList() : llm.recommendations();
     Map<String, Object> run = new LinkedHashMap<>();
     run.put("tool", tool);
-    run.put("results", results);
+    run.put("results", buildSarifResults(score, ms, recommendations));
+
     Map<String, Object> root = new LinkedHashMap<>();
-    root.put("$schema", "https://json.schemastore.org/sarif-2.1.0.json");
     root.put("version", "2.1.0");
+    root.put(
+        "$schema",
+        "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json");
     root.put("runs", java.util.Collections.singletonList(run));
     try {
       return new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT).writeValueAsString(root);
     } catch (Exception e) {
       return "{}";
     }
+  }
+
+  static java.util.List<Map<String, Object>> buildSarifRules(Map<String, Double> metrics) {
+    java.util.List<Map<String, Object>> rules = new java.util.ArrayList<>();
+    for (String metricName : metrics.keySet()) {
+      MetricRuleDescription d =
+          METRIC_RULE_DESCRIPTIONS.getOrDefault(metricName, defaultDescription(metricName));
+      rules.add(rule(metricName, d));
+    }
+    rules.add(
+        rule(
+            "mfcqi_score",
+            new MetricRuleDescription(
+                "MFCQI Overall Score",
+                "Multi-Factor Code Quality Index",
+                "Composite code quality score combining multiple evidence-based metrics using geometric mean.")));
+    return rules;
+  }
+
+  private static Map<String, Object> rule(String id, MetricRuleDescription d) {
+    Map<String, Object> rule = new LinkedHashMap<>();
+    rule.put("id", id);
+    rule.put("name", d.name);
+    Map<String, Object> sd = new LinkedHashMap<>();
+    sd.put("text", d.shortDescription);
+    rule.put("shortDescription", sd);
+    Map<String, Object> fd = new LinkedHashMap<>();
+    fd.put("text", d.fullDescription);
+    rule.put("fullDescription", fd);
+    rule.put("helpUri", "https://github.com/bsbodden/mfcqi");
+    Map<String, Object> props = new LinkedHashMap<>();
+    props.put(
+        "tags",
+        java.util.Arrays.asList(
+            "code-quality", "mfcqi_score".equals(id) ? "composite" : "metrics"));
+    rule.put("properties", props);
+    return rule;
+  }
+
+  static java.util.List<Map<String, Object>> buildSarifResults(
+      double overallScore, Map<String, Double> metrics, java.util.List<String> recommendations) {
+    java.util.List<Map<String, Object>> results = new java.util.ArrayList<>();
+
+    Map<String, Object> overall = new LinkedHashMap<>();
+    overall.put("ruleId", "mfcqi_score");
+    overall.put("level", scoreToSarifLevel(overallScore));
+    Map<String, Object> overallMsg = new LinkedHashMap<>();
+    overallMsg.put(
+        "text",
+        "Overall code quality score: "
+            + String.format(Locale.ROOT, "%.3f", overallScore)
+            + "/1.0 ("
+            + scoreToRating(overallScore)
+            + ")");
+    overall.put("message", overallMsg);
+    Map<String, Object> overallProps = new LinkedHashMap<>();
+    overallProps.put("score", overallScore);
+    overall.put("properties", overallProps);
+    results.add(overall);
+
+    for (Map.Entry<String, Double> e : metrics.entrySet()) {
+      Map<String, Object> r = new LinkedHashMap<>();
+      r.put("ruleId", e.getKey());
+      r.put("level", scoreToSarifLevel(e.getValue()));
+      Map<String, Object> msg = new LinkedHashMap<>();
+      msg.put(
+          "text",
+          e.getKey()
+              + ": "
+              + String.format(Locale.ROOT, "%.2f", e.getValue())
+              + " ("
+              + scoreToRating(e.getValue())
+              + ")");
+      r.put("message", msg);
+      Map<String, Object> p = new LinkedHashMap<>();
+      p.put("score", e.getValue());
+      r.put("properties", p);
+      results.add(r);
+    }
+
+    int i = 1;
+    for (String rec : recommendations) {
+      Map<String, Object> r = new LinkedHashMap<>();
+      r.put("ruleId", "mfcqi_score");
+      r.put("level", "note");
+      Map<String, Object> msg = new LinkedHashMap<>();
+      msg.put("text", "Recommendation " + i + ": " + rec.trim());
+      r.put("message", msg);
+      Map<String, Object> p = new LinkedHashMap<>();
+      p.put("type", "recommendation");
+      r.put("properties", p);
+      results.add(r);
+      i++;
+    }
+    return results;
+  }
+
+  /** Verbatim port of Python's {@code _score_to_sarif_level}. */
+  static String scoreToSarifLevel(double score) {
+    if (score >= 0.8) {
+      return "none";
+    }
+    if (score >= 0.6) {
+      return "note";
+    }
+    if (score >= 0.4) {
+      return "warning";
+    }
+    return "error";
+  }
+
+  /** Verbatim port of Python's {@code _score_to_rating}. */
+  static String scoreToRating(double score) {
+    if (score >= 0.8) {
+      return "Excellent";
+    }
+    if (score >= 0.6) {
+      return "Good";
+    }
+    if (score >= 0.4) {
+      return "Needs Work";
+    }
+    return "Poor";
+  }
+
+  private static MetricRuleDescription defaultDescription(String metricName) {
+    return new MetricRuleDescription(
+        metricName, "Measures " + metricName, "Code quality metric: " + metricName);
+  }
+
+  static final class MetricRuleDescription {
+    final String name;
+    final String shortDescription;
+    final String fullDescription;
+
+    MetricRuleDescription(String name, String shortDescription, String fullDescription) {
+      this.name = name;
+      this.shortDescription = shortDescription;
+      this.fullDescription = fullDescription;
+    }
+  }
+
+  /** Per-metric rule descriptions — Java metric names map to the same shape Python uses. */
+  static final Map<String, MetricRuleDescription> METRIC_RULE_DESCRIPTIONS;
+
+  static {
+    Map<String, MetricRuleDescription> m = new LinkedHashMap<>();
+    m.put(
+        "Cyclomatic Complexity",
+        new MetricRuleDescription(
+            "Cyclomatic Complexity",
+            "Measures code complexity based on decision points",
+            "Cyclomatic complexity measures the number of linearly independent paths through code. Lower is better."));
+    m.put(
+        "Cognitive Complexity",
+        new MetricRuleDescription(
+            "Cognitive Complexity",
+            "Measures code understandability",
+            "Cognitive complexity measures how difficult code is to understand, focusing on nested structures and control flow."));
+    m.put(
+        "Maintainability Index",
+        new MetricRuleDescription(
+            "Maintainability Index",
+            "Composite maintainability metric",
+            "Maintainability Index combines Halstead Volume, Cyclomatic Complexity, and lines of code into a single metric."));
+    m.put(
+        "Halstead Volume",
+        new MetricRuleDescription(
+            "Halstead Volume",
+            "Measures program vocabulary and length",
+            "Halstead Volume measures the size of the implementation based on the number of operations and operands."));
+    m.put(
+        "Code Duplication",
+        new MetricRuleDescription(
+            "Code Duplication",
+            "Detects duplicate code blocks",
+            "Code duplication measures the percentage of code that is duplicated across the codebase."));
+    m.put(
+        "Documentation Coverage",
+        new MetricRuleDescription(
+            "Documentation Coverage",
+            "Measures documentation completeness",
+            "Documentation coverage measures the percentage of code that has proper documentation."));
+    m.put(
+        "security",
+        new MetricRuleDescription(
+            "Security Score",
+            "Security vulnerability assessment",
+            "Security score based on static analysis findings (Bandit-equivalent), secrets detection, and dependency scanning."));
+    m.put(
+        "Dependency Security",
+        new MetricRuleDescription(
+            "Dependency Security",
+            "Dependency vulnerability assessment",
+            "Dependency security score based on CVE scanning of declared Maven and Gradle dependencies."));
+    m.put(
+        "Secrets Exposure",
+        new MetricRuleDescription(
+            "Secrets Exposure",
+            "Hard-coded credential detection",
+            "Secrets exposure score based on regex catalog and Shannon-entropy detection of hard-coded credentials."));
+    m.put(
+        "Code Smell Density",
+        new MetricRuleDescription(
+            "Code Smell Density",
+            "Weighted smell count per KLOC",
+            "Aggregates production and test smell detectors into a category-weighted density per 1K lines of code."));
+    METRIC_RULE_DESCRIPTIONS = java.util.Collections.unmodifiableMap(m);
   }
 
   void writeOutput(String content) {

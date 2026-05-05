@@ -72,18 +72,61 @@ class AnalyzeCommandTest {
   }
 
   @Test
-  void render_sarifFlagsLowScoringMetrics(@TempDir Path tmp) {
+  void render_sarifIncludesRulesForEveryMetricAndOverall(@TempDir Path tmp) {
     Map<String, Double> metrics = new LinkedHashMap<>();
-    metrics.put("mfcqi_score", 0.4);
+    metrics.put("mfcqi_score", 0.5);
     metrics.put("security", 0.2);
     metrics.put("Cyclomatic Complexity", 0.95);
-    String sarif = AnalyzeCommand.renderSarif(tmp, 0.4, metrics, null);
-    // Below-warning metric (security 0.2) appears as an error-level result.
+    String sarif = AnalyzeCommand.renderSarif(tmp, 0.5, metrics, null);
     assertThat(sarif).contains("\"version\" : \"2.1.0\"");
-    assertThat(sarif).contains("\"ruleId\" : \"mfcqi/security\"");
-    assertThat(sarif).contains("\"level\" : \"error\"");
-    // A high-scoring metric must NOT produce a SARIF result.
-    assertThat(sarif).doesNotContain("\"ruleId\" : \"mfcqi/cyclomatic complexity\"");
+    // Driver metadata.
+    assertThat(sarif).contains("\"name\" : \"MFCQI\"");
+    assertThat(sarif).contains("\"informationUri\"");
+    // Rule definitions for every metric AND for the overall score.
+    assertThat(sarif).contains("\"id\" : \"security\"");
+    assertThat(sarif).contains("\"id\" : \"Cyclomatic Complexity\"");
+    assertThat(sarif).contains("\"id\" : \"mfcqi_score\"");
+    assertThat(sarif)
+        .contains("Cyclomatic complexity measures the number of linearly independent paths");
+    // Results: every metric appears (not just below-threshold), keyed by its rule id.
+    assertThat(sarif).contains("\"ruleId\" : \"security\"");
+    assertThat(sarif).contains("\"ruleId\" : \"Cyclomatic Complexity\"");
+    assertThat(sarif).contains("\"ruleId\" : \"mfcqi_score\"");
+  }
+
+  @Test
+  void render_sarifEmitsRecommendationsAsNoteResults(@TempDir Path tmp) {
+    Map<String, Double> metrics = new LinkedHashMap<>();
+    metrics.put("mfcqi_score", 0.7);
+    metrics.put("security", 0.3);
+    com.integrallis.mfcqi.analysis.AnalysisResult llm =
+        new com.integrallis.mfcqi.analysis.AnalysisResult(
+            0.7,
+            metrics,
+            java.util.Arrays.asList(
+                "[HIGH] Fix MD5 in Crypto.java", "[MEDIUM] Reduce Service complexity"),
+            "claude-3-5-sonnet-20241022");
+    String sarif = AnalyzeCommand.renderSarif(tmp, 0.7, metrics, llm);
+    assertThat(sarif).contains("Recommendation 1: [HIGH] Fix MD5 in Crypto.java");
+    assertThat(sarif).contains("Recommendation 2: [MEDIUM] Reduce Service complexity");
+    assertThat(sarif).contains("\"level\" : \"note\"");
+    assertThat(sarif).contains("\"type\" : \"recommendation\"");
+  }
+
+  @Test
+  void scoreToSarifLevel_followsPythonThresholds() {
+    assertThat(AnalyzeCommand.scoreToSarifLevel(0.85)).isEqualTo("none");
+    assertThat(AnalyzeCommand.scoreToSarifLevel(0.65)).isEqualTo("note");
+    assertThat(AnalyzeCommand.scoreToSarifLevel(0.45)).isEqualTo("warning");
+    assertThat(AnalyzeCommand.scoreToSarifLevel(0.20)).isEqualTo("error");
+  }
+
+  @Test
+  void scoreToRating_followsPythonThresholds() {
+    assertThat(AnalyzeCommand.scoreToRating(0.85)).isEqualTo("Excellent");
+    assertThat(AnalyzeCommand.scoreToRating(0.65)).isEqualTo("Good");
+    assertThat(AnalyzeCommand.scoreToRating(0.45)).isEqualTo("Needs Work");
+    assertThat(AnalyzeCommand.scoreToRating(0.20)).isEqualTo("Poor");
   }
 
   @Test
