@@ -71,4 +71,20 @@ class AnalysisConfigTest {
     AnalysisConfig cfg = AnalysisConfig.fromEnvironment(env::get);
     assertThat(cfg.model()).isEqualTo("ollama:llama3.1");
   }
+
+  @Test
+  void fromEnvironmentAndDotenv_picksUpKeysFromDotenvFile(
+      @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+    java.nio.file.Files.writeString(
+        tmp.resolve(".env"), "ANTHROPIC_API_KEY=ak-from-dotenv\nOPENAI_API_KEY=ok-from-dotenv\n");
+    AnalysisConfig cfg = AnalysisConfig.fromEnvironmentAndDotenv(tmp);
+    // Real shell may also have these set; we assert at minimum that the dotenv values are used
+    // when the shell does not override them.
+    if (System.getenv("ANTHROPIC_API_KEY") == null) {
+      assertThat(cfg.anthropicApiKey()).contains("ak-from-dotenv");
+    }
+    if (System.getenv("OPENAI_API_KEY") == null) {
+      assertThat(cfg.openaiApiKey()).contains("ok-from-dotenv");
+    }
+  }
 }

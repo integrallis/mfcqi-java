@@ -94,6 +94,21 @@ public final class AnalysisConfig {
     return fromEnvironment(System::getenv);
   }
 
+  /**
+   * Build using environment variables, falling back to a {@code .env} file discovered by walking up
+   * from {@code start}. Real shell {@code export}s win over the file. Use this in CLI/test code
+   * paths where developer-local API keys live in {@code .env}.
+   */
+  public static AnalysisConfig fromEnvironmentAndDotenv(java.nio.file.Path start) {
+    java.util.Map<String, String> dotenv =
+        DotEnv.findUp(start).map(DotEnv::load).orElse(java.util.Collections.emptyMap());
+    return fromEnvironment(
+        name -> {
+          String shell = System.getenv(name);
+          return (shell != null && !shell.isEmpty()) ? shell : dotenv.get(name);
+        });
+  }
+
   /** Test seam — accepts a function that returns the value of a named env var. */
   static AnalysisConfig fromEnvironment(java.util.function.Function<String, String> env) {
     Builder b = builder();

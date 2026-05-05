@@ -146,7 +146,8 @@ public final class AnalyzeCommand implements Callable<Integer> {
 
   AnalysisResult runLlm(Map<String, Double> metrics) {
     AnalysisConfig.Builder b = AnalysisConfig.builder();
-    AnalysisConfig fromEnv = AnalysisConfig.fromEnvironment();
+    // Use dotenv fallback so developer-local .env files supply API keys without exporting them.
+    AnalysisConfig fromEnv = AnalysisConfig.fromEnvironmentAndDotenv(path);
     fromEnv.anthropicApiKey().ifPresent(b::anthropicApiKey);
     fromEnv.openaiApiKey().ifPresent(b::openaiApiKey);
     if (model != null && !model.isEmpty()) {
