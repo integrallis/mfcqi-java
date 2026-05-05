@@ -111,4 +111,63 @@ class AnalyzeCommandTest {
             .execute("analyze", "--skip-llm", "--min-score", "0.99", tmp.toString());
     assertThat(code).isEqualTo(1);
   }
+
+  @Test
+  void cli_llmIsOptInByDefault(@TempDir Path tmp) throws Exception {
+    // Python: skip LLM unless --model or --provider is explicitly supplied.
+    Path src = Files.createDirectories(tmp.resolve("src/main/java"));
+    Files.writeString(src.resolve("X.java"), "public class X { public int v() { return 1; } }");
+    int code = new CommandLine(new Main()).execute("analyze", tmp.toString());
+    assertThat(code).isEqualTo(0);
+    // No "LLM analysis skipped" or "LLM analysis failed" — instead "metrics-only mode" notice.
+    String err = stderr.toString(StandardCharsets.UTF_8);
+    assertThat(err).contains("metrics-only");
+    assertThat(err).doesNotContain("LLM analysis failed");
+  }
+
+  @Test
+  void cli_jsonOutputIsAutoSilent(@TempDir Path tmp) throws Exception {
+    Path src = Files.createDirectories(tmp.resolve("src/main/java"));
+    Files.writeString(src.resolve("X.java"), "public class X { public int v() { return 1; } }");
+    int code = new CommandLine(new Main()).execute("analyze", "--format", "json", tmp.toString());
+    assertThat(code).isEqualTo(0);
+    String err = stderr.toString(StandardCharsets.UTF_8);
+    // metrics-only chatter must not pollute stderr when json is selected.
+    assertThat(err).doesNotContain("metrics-only");
+  }
+
+  @Test
+  void defaultModelForProvider_mapsAllKnownProviders() {
+    assertThat(AnalyzeCommand.defaultModelForProvider("anthropic"))
+        .isEqualTo("claude-3-5-sonnet-20241022");
+    assertThat(AnalyzeCommand.defaultModelForProvider("openai")).isEqualTo("gpt-4o");
+    assertThat(AnalyzeCommand.defaultModelForProvider("ollama")).isEqualTo("ollama:llama3");
+    assertThat(AnalyzeCommand.defaultModelForProvider("unknown"))
+        .isEqualTo("claude-3-5-sonnet-20241022");
+  }
+
+  @Test
+  void cli_qualityGateInlineFlagPassesWhenAboveThresholds(@TempDir Path tmp) throws Exception {
+    Path src = Files.createDirectories(tmp.resolve("src/main/java"));
+    Files.writeString(
+        src.resolve("X.java"),
+        "/** module */ public class X { /** doc */ public int v() { return 1; } }");
+    // Provide a permissive .mfcqi.yaml so the gate passes for the trivial sample.
+    Files.writeString(
+        tmp.resolve(".mfcqi.yaml"),
+        "quality_gates:\n  overall:\n    mfcqi_score: 0.0\n  metrics: {}\n");
+    int code = new CommandLine(new Main()).execute("analyze", "--quality-gate", tmp.toString());
+    assertThat(code).isEqualTo(0);
+  }
+
+  @Test
+  void cli_qualityGateInlineFailsWhenBelowThresholds(@TempDir Path tmp) throws Exception {
+    Path src = Files.createDirectories(tmp.resolve("src/main/java"));
+    Files.writeString(src.resolve("X.java"), "public class X {}");
+    Files.writeString(
+        tmp.resolve(".mfcqi.yaml"),
+        "quality_gates:\n  overall:\n    mfcqi_score: 0.99\n  metrics: {}\n");
+    int code = new CommandLine(new Main()).execute("analyze", "--quality-gate", tmp.toString());
+    assertThat(code).isEqualTo(1);
+  }
 }

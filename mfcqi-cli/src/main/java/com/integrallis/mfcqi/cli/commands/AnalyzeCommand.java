@@ -5,16 +5,25 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.integrallis.mfcqi.analysis.AnalysisConfig;
 import com.integrallis.mfcqi.analysis.AnalysisEngine;
 import com.integrallis.mfcqi.analysis.AnalysisResult;
+import com.integrallis.mfcqi.analysis.AnthropicProvider;
+import com.integrallis.mfcqi.analysis.LLMProvider;
+import com.integrallis.mfcqi.analysis.OllamaProvider;
+import com.integrallis.mfcqi.analysis.OpenAIProvider;
 import com.integrallis.mfcqi.cli.MFCQIDefaults;
 import com.integrallis.mfcqi.core.MFCQICalculator;
+import com.integrallis.mfcqi.qualitygates.QualityGateConfig;
+import com.integrallis.mfcqi.qualitygates.QualityGateEvaluator;
+import com.integrallis.mfcqi.qualitygates.QualityGateResult;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -22,8 +31,15 @@ import picocli.CommandLine.Parameters;
 
 /**
  * {@code mfcqi analyze} — runs the default {@link MFCQICalculator} against a codebase, optionally
- * passes the metric breakdown to the LLM analysis engine, and renders the result in one of four
- * formats (terminal, json, markdown, sarif). Mirrors {@code mfcqi/cli/commands/analyze.py}.
+ * passes the metric breakdown to the LLM analysis engine, and renders the result. Mirrors {@code
+ * mfcqi/cli/commands/analyze.py}, including:
+ *
+ * <ul>
+ *   <li>LLM is opt-in: skipped unless {@code --model} or {@code --provider} is explicitly set.
+ *   <li>{@code --skip-llm} / {@code --metrics-only} forces metrics-only.
+ *   <li>{@code json} / {@code sarif} output formats auto-enable {@code --silent}.
+ *   <li>{@code --quality-gate} runs gate evaluation after rendering, exiting non-zero on failure.
+ * </ul>
  */
 @Command(
     name = "analyze",
@@ -55,6 +71,16 @@ public final class AnalyzeCommand implements Callable<Integer> {
   String model;
 
   @Option(
+      names = {"--provider"},
+      description = "Force LLM provider: anthropic, openai, or ollama.")
+  String provider;
+
+  @Option(
+      names = {"--ollama-endpoint"},
+      description = "Ollama HTTP endpoint. Default: http://localhost:11434.")
+  String ollamaEndpoint = OllamaProvider.DEFAULT_ENDPOINT;
+
+  @Option(
       names = {"--recommendations"},
       description = "Number of recommendations to request from the LLM (default 50).")
   int recommendationCount = 50;
@@ -64,6 +90,16 @@ public final class AnalyzeCommand implements Callable<Integer> {
       description = "Exit with code 1 if MFCQI score is below this threshold.")
   Double minScore;
 
+  @Option(
+      names = {"--quality-gate"},
+      description = "Evaluate against .mfcqi.yaml quality gates after rendering output.")
+  boolean qualityGate;
+
+  @Option(
+      names = {"--silent"},
+      description = "Suppress non-essential stderr (auto-enabled for json/sarif output).")
+  boolean silent;
+
   @Override
   public Integer call() {
     if (!Files.isDirectory(path) && !Files.isRegularFile(path)) {
@@ -71,51 +107,122 @@ public final class AnalyzeCommand implements Callable<Integer> {
       return 2;
     }
 
+    // Auto-silent for machine formats — Python: `if output_format in ("json", "sarif"): silent =
+    // True`
+    String fmt = format == null ? "terminal" : format.toLowerCase(Locale.ROOT);
+    if ("json".equals(fmt) || "sarif".equals(fmt)) {
+      silent = true;
+    }
+
+    // LLM is opt-in — Python: `should_skip_llm = (skip_llm or metrics_only) or not
+    // explicitly_requested_llm`
+    boolean explicitlyRequestedLlm =
+        (model != null && !model.isEmpty()) || (provider != null && !provider.isEmpty());
+    boolean shouldSkipLlm = skipLlm || !explicitlyRequestedLlm;
+
     MFCQICalculator calculator = MFCQIDefaults.calculator();
     Map<String, Double> detailed = calculator.detailedMetrics(path);
     double score = detailed.getOrDefault("mfcqi_score", 0.0);
 
     AnalysisResult llmResult = null;
-    if (!skipLlm) {
-      llmResult = tryRunLlm(detailed);
+    if (!shouldSkipLlm) {
+      llmResult = runLlm(detailed);
+    } else if (!silent) {
+      System.err.println("Analysis complete (metrics-only mode)");
     }
 
-    String rendered = render(format, path, score, detailed, llmResult);
+    String rendered = render(fmt, path, score, detailed, llmResult);
     writeOutput(rendered);
 
     if (minScore != null && score < minScore) {
       return 1;
     }
+
+    if (qualityGate) {
+      return runQualityGate(score, detailed) ? 0 : 1;
+    }
     return 0;
   }
 
-  AnalysisResult tryRunLlm(Map<String, Double> metrics) {
+  AnalysisResult runLlm(Map<String, Double> metrics) {
     AnalysisConfig.Builder b = AnalysisConfig.builder();
-    if (model != null && !model.isEmpty()) {
-      b.model(model);
-    }
     AnalysisConfig fromEnv = AnalysisConfig.fromEnvironment();
     fromEnv.anthropicApiKey().ifPresent(b::anthropicApiKey);
     fromEnv.openaiApiKey().ifPresent(b::openaiApiKey);
-    if (model == null || model.isEmpty()) {
+    if (model != null && !model.isEmpty()) {
+      b.model(model);
+    } else if (provider != null && !provider.isEmpty()) {
+      b.model(defaultModelForProvider(provider));
+    } else {
       b.model(fromEnv.model());
     }
     AnalysisConfig cfg = b.build();
     try {
       cfg.validate();
     } catch (RuntimeException e) {
-      // No API key configured — fall back to metrics-only quietly. Python prints a warning;
-      // we mirror that.
-      System.err.println("LLM analysis skipped: " + e.getMessage());
+      if (!silent) {
+        System.err.println("LLM analysis skipped: " + e.getMessage());
+      }
       return null;
     }
+    AnalysisEngine engine = analysisEngineFor(cfg);
     try {
-      return AnalysisEngine.withDefaults()
-          .analyze(path.toString(), metrics, recommendationCount, cfg);
+      return engine.analyze(path.toString(), metrics, recommendationCount, cfg);
     } catch (RuntimeException e) {
-      System.err.println("LLM analysis failed: " + e.getMessage());
+      if (!silent) {
+        System.err.println("LLM analysis failed: " + e.getMessage());
+      }
       return null;
     }
+  }
+
+  private AnalysisEngine analysisEngineFor(AnalysisConfig cfg) {
+    // Honour --ollama-endpoint by injecting a fresh OllamaProvider with the chosen endpoint.
+    List<LLMProvider> providers =
+        Arrays.asList(
+            new AnthropicProvider(), new OpenAIProvider(), new OllamaProvider(ollamaEndpoint));
+    return new AnalysisEngine(providers);
+  }
+
+  static String defaultModelForProvider(String providerName) {
+    switch (providerName.toLowerCase(Locale.ROOT)) {
+      case "anthropic":
+        return AnalysisConfig.DEFAULT_MODEL;
+      case "openai":
+        return "gpt-4o";
+      case "ollama":
+        return "ollama:llama3";
+      default:
+        return AnalysisConfig.DEFAULT_MODEL;
+    }
+  }
+
+  boolean runQualityGate(double score, Map<String, Double> detailed) {
+    Optional<Path> discovered = QualityGateEvaluator.findQualityGateConfig(path);
+    QualityGateConfig config =
+        discovered.map(QualityGateConfig::fromFile).orElseGet(QualityGateConfig::fromDefaults);
+    Map<String, Double> metricScores = new LinkedHashMap<>(detailed);
+    metricScores.remove("mfcqi_score");
+    Map<String, Object> analysisResult = new LinkedHashMap<>();
+    analysisResult.put("mfcqi_score", score);
+    analysisResult.put("metric_scores", metricScores);
+    QualityGateResult r = new QualityGateEvaluator(config).evaluate(analysisResult);
+    if (!silent) {
+      System.err.println("Quality gates: " + (r.passed() ? "PASS" : r.failedCount() + " failed"));
+      for (QualityGateResult.MetricResult mr : r.metricResults()) {
+        System.err.println(
+            "  "
+                + (mr.passed() ? "PASS" : "FAIL")
+                + " "
+                + mr.metric()
+                + ": "
+                + String.format(Locale.ROOT, "%.3f", mr.actual())
+                + " (threshold "
+                + String.format(Locale.ROOT, "%.3f", mr.threshold())
+                + ")");
+      }
+    }
+    return r.passed();
   }
 
   String render(
@@ -124,7 +231,7 @@ public final class AnalyzeCommand implements Callable<Integer> {
       double score,
       Map<String, Double> metrics,
       AnalysisResult llm) {
-    switch (fmt.toLowerCase(Locale.ROOT)) {
+    switch (fmt) {
       case "json":
         return renderJson(codebasePath, score, metrics, llm);
       case "markdown":
@@ -208,7 +315,7 @@ public final class AnalyzeCommand implements Callable<Integer> {
     }
   }
 
-  /** Minimal SARIF 2.1.0 envelope with one result per below-threshold metric. */
+  /** Minimal SARIF 2.1.0 envelope — superseded by the richer renderer in a follow-up commit. */
   static String renderSarif(
       Path codebasePath, double score, Map<String, Double> metrics, AnalysisResult llm) {
     Map<String, Object> tool = new LinkedHashMap<>();
