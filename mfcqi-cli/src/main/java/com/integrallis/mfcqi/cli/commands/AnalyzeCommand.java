@@ -74,8 +74,19 @@ public final class AnalyzeCommand implements Callable<Integer> {
 
   @Option(
       names = {"--provider"},
-      description = "Force LLM provider: anthropic, openai, or ollama.")
-  String provider;
+      description = "Force LLM provider. Valid values: ${COMPLETION-CANDIDATES}.")
+  ProviderName provider;
+
+  /**
+   * Closed-set provider choice — Java analog of Python's {@code click.Choice(["anthropic",
+   * "openai", "ollama"])}. Picocli rejects values outside this enum at parse time, mirroring
+   * Click's UsageError.
+   */
+  public enum ProviderName {
+    anthropic,
+    openai,
+    ollama
+  }
 
   @Option(
       names = {"--ollama-endpoint"},
@@ -118,8 +129,7 @@ public final class AnalyzeCommand implements Callable<Integer> {
 
     // LLM is opt-in — Python: `should_skip_llm = (skip_llm or metrics_only) or not
     // explicitly_requested_llm`
-    boolean explicitlyRequestedLlm =
-        (model != null && !model.isEmpty()) || (provider != null && !provider.isEmpty());
+    boolean explicitlyRequestedLlm = (model != null && !model.isEmpty()) || provider != null;
     boolean shouldSkipLlm = skipLlm || !explicitlyRequestedLlm;
 
     MFCQICalculator calculator = MFCQIDefaults.calculator();
@@ -154,7 +164,7 @@ public final class AnalyzeCommand implements Callable<Integer> {
     fromEnv.openaiApiKey().ifPresent(b::openaiApiKey);
     if (model != null && !model.isEmpty()) {
       b.model(model);
-    } else if (provider != null && !provider.isEmpty()) {
+    } else if (provider != null) {
       b.model(defaultModelForProvider(provider));
     } else {
       b.model(fromEnv.model());
@@ -188,14 +198,13 @@ public final class AnalyzeCommand implements Callable<Integer> {
     return new AnalysisEngine(providers);
   }
 
-  static String defaultModelForProvider(String providerName) {
-    switch (providerName.toLowerCase(Locale.ROOT)) {
-      case "anthropic":
-        return AnalysisConfig.DEFAULT_MODEL;
-      case "openai":
+  static String defaultModelForProvider(ProviderName provider) {
+    switch (provider) {
+      case openai:
         return "gpt-4o";
-      case "ollama":
+      case ollama:
         return "ollama:llama3";
+      case anthropic:
       default:
         return AnalysisConfig.DEFAULT_MODEL;
     }

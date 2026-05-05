@@ -227,10 +227,25 @@ class AnalyzeCommandTest {
 
   @Test
   void defaultModelForProvider_mapsAllKnownProviders() {
-    assertThat(AnalyzeCommand.defaultModelForProvider("anthropic")).isEqualTo("claude-sonnet-4-5");
-    assertThat(AnalyzeCommand.defaultModelForProvider("openai")).isEqualTo("gpt-4o");
-    assertThat(AnalyzeCommand.defaultModelForProvider("ollama")).isEqualTo("ollama:llama3");
-    assertThat(AnalyzeCommand.defaultModelForProvider("unknown")).isEqualTo("claude-sonnet-4-5");
+    assertThat(AnalyzeCommand.defaultModelForProvider(AnalyzeCommand.ProviderName.anthropic))
+        .isEqualTo("claude-sonnet-4-5");
+    assertThat(AnalyzeCommand.defaultModelForProvider(AnalyzeCommand.ProviderName.openai))
+        .isEqualTo("gpt-4o");
+    assertThat(AnalyzeCommand.defaultModelForProvider(AnalyzeCommand.ProviderName.ollama))
+        .isEqualTo("ollama:llama3");
+  }
+
+  @Test
+  void cli_unknownProviderIsRejectedAtParseTime(@TempDir Path tmp) throws Exception {
+    Path src = Files.createDirectories(tmp.resolve("src/main/java"));
+    Files.writeString(src.resolve("X.java"), "public class X { public int v() { return 1; } }");
+    int code =
+        new CommandLine(new Main())
+            .execute("analyze", "--provider", "bogus-provider", tmp.toString());
+    // Picocli returns 2 for usage errors — matches Python click.Choice's UsageError exit.
+    assertThat(code).isEqualTo(2);
+    String err = stderr.toString(StandardCharsets.UTF_8);
+    assertThat(err).containsIgnoringCase("provider");
   }
 
   @Test
