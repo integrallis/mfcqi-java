@@ -3,6 +3,7 @@ package com.integrallis.mfcqi.cli;
 import com.integrallis.mfcqi.cli.commands.AnalyzeCommand;
 import com.integrallis.mfcqi.cli.commands.BadgeCommand;
 import com.integrallis.mfcqi.cli.commands.ConfigCommand;
+import com.integrallis.mfcqi.cli.commands.ModelsCommand;
 import com.integrallis.mfcqi.cli.commands.QualityGateCommand;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -20,6 +21,7 @@ import picocli.CommandLine.Command;
       AnalyzeCommand.class,
       BadgeCommand.class,
       ConfigCommand.class,
+      ModelsCommand.class,
       QualityGateCommand.class
     })
 public final class Main implements Runnable {
