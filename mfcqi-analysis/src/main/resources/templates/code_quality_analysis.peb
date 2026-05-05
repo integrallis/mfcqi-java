@@ -3,6 +3,8 @@ You are an expert software engineer conducting a comprehensive Java code quality
 PROJECT CONTEXT:
 ================
 Path: {{ codebase_path }}
+Total Files Analyzed: {{ total_files }}
+Lines of Code: {{ total_lines }}
 MFCQI Score: {{ mfcqi_score }}
 
 METRICS SUMMARY:
@@ -19,19 +21,49 @@ CRITICAL ISSUES REQUIRING IMMEDIATE ATTENTION:
 {% endfor %}
 {% endif %}
 
+{% if tool_outputs.bandit is not null %}
+SECURITY ANALYSIS (FindSecBugs / Bandit equivalent):
+====================================================
+{{ tool_outputs.bandit.summary }}
+Critical: {{ tool_outputs.bandit.criticalCount }}   High: {{ tool_outputs.bandit.highCount }}   Medium: {{ tool_outputs.bandit.mediumCount }}   Low: {{ tool_outputs.bandit.lowCount }}
+
+Top Security Issues:
+{% for issue in tool_outputs.bandit.topIssues %}
+- [{{ issue.severity }}] {{ issue.testId }} {{ issue.testName }}: {{ issue.message }}
+  at {{ issue.file }}:{{ issue.lineNumber }}
+{% endfor %}
+{% endif %}
+
+{% if tool_outputs.complexity is not null and tool_outputs.complexity.complexFunctions is not empty %}
+COMPLEXITY ANALYSIS:
+====================
+Most Complex Methods (highest cyclomatic complexity first):
+{% for func in tool_outputs.complexity.complexFunctions %}
+- {{ func.functionName }} in {{ func.file }}:{{ func.lineNumber }} — Cyclomatic Complexity = {{ func.complexity }}
+{% endfor %}
+{% endif %}
+
+{% if tool_outputs.cyclomaticComplexityRaw > 0 %}
+Average Cyclomatic Complexity: {{ tool_outputs.cyclomaticComplexityRaw }}
+{% endif %}
+{% if tool_outputs.halsteadVolumeRaw > 0 %}
+Average Halstead Volume: {{ tool_outputs.halsteadVolumeRaw }}
+{% endif %}
+
 ANALYSIS TASK:
 ==============
-Generate {{ recommendation_count }} recommendations for the lowest-scoring metrics above. Use the EXACT format below — recommendations are separated by starting each one with "##".
+Generate {{ recommendation_count }} concrete, actionable recommendations grounded in the EVIDENCE above. Where the security or complexity sections cite a specific file:line, your recommendation MUST reference that exact location. Recommendations are separated by starting each one with "## [".
 
-Output Format (one recommendation per metric):
+Output Format (one recommendation per issue):
 You MUST use this exact format for EACH recommendation:
 
-## [SEVERITY] Fix [Specific Issue] in [Area]
+## [SEVERITY] Fix [Specific Issue] in [File:line]
 
 **Description:** One-sentence description of the issue
+**Evidence:** Quote the specific tool finding (file:line plus the rule ID or message)
 **Solution:** Brief fix (1-2 sentences, no code examples)
 **Impact:** Expected metric improvement
 
-IMPORTANT: Start EACH new recommendation with "## [" — this is the delimiter used to separate recommendations.
+IMPORTANT: Start EACH new recommendation with "## [" — this is the delimiter used to separate recommendations. Do NOT use "---" separators.
 
-Generate all {{ recommendation_count }} recommendations now, starting each with "##":
+Generate {{ recommendation_count }} recommendations now, starting each with "##":

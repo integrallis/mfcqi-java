@@ -9,7 +9,9 @@ import com.integrallis.mfcqi.analysis.AnthropicProvider;
 import com.integrallis.mfcqi.analysis.LLMProvider;
 import com.integrallis.mfcqi.analysis.OllamaProvider;
 import com.integrallis.mfcqi.analysis.OpenAIProvider;
+import com.integrallis.mfcqi.analysis.ToolOutputs;
 import com.integrallis.mfcqi.cli.MFCQIDefaults;
+import com.integrallis.mfcqi.cli.ToolOutputCollector;
 import com.integrallis.mfcqi.core.MFCQICalculator;
 import com.integrallis.mfcqi.qualitygates.QualityGateConfig;
 import com.integrallis.mfcqi.qualitygates.QualityGateEvaluator;
@@ -168,7 +170,8 @@ public final class AnalyzeCommand implements Callable<Integer> {
     }
     AnalysisEngine engine = analysisEngineFor(cfg);
     try {
-      return engine.analyze(path.toString(), metrics, recommendationCount, cfg);
+      ToolOutputs toolOutputs = ToolOutputCollector.collect(path, metrics);
+      return engine.analyze(path.toString(), metrics, toolOutputs, recommendationCount, cfg);
     } catch (RuntimeException e) {
       if (!silent) {
         System.err.println("LLM analysis failed: " + e.getMessage());

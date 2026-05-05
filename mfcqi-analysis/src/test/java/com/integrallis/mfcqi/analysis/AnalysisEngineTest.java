@@ -82,6 +82,38 @@ class AnalysisEngineTest {
   }
 
   @Test
+  void renderPrompt_includesBanditAndComplexitySections() {
+    AnalysisEngine engine =
+        new AnalysisEngine(java.util.Collections.singletonList(new StubProvider("ok")));
+    java.util.List<ToolOutputs.SecurityIssue> issues =
+        java.util.Arrays.asList(
+            new ToolOutputs.SecurityIssue(
+                "B303", "use_of_weak_hash", "Crypto.java", 42, "MEDIUM", "MD5 used"));
+    java.util.List<ToolOutputs.ComplexityHotspot> hotspots =
+        java.util.Arrays.asList(
+            new ToolOutputs.ComplexityHotspot("process", "Service.java", 18, 21));
+    ToolOutputs outputs =
+        ToolOutputs.builder()
+            .bandit(issues)
+            .complexity(hotspots)
+            .totalFiles(7)
+            .totalLines(800)
+            .build();
+    Map<String, Double> metrics = new LinkedHashMap<>();
+    metrics.put("mfcqi_score", 0.55);
+    metrics.put("security", 0.2);
+    String prompt = engine.renderPrompt("/repo", metrics, outputs, 5);
+    assertThat(prompt)
+        .contains("Total Files Analyzed: 7")
+        .contains("Lines of Code: 800")
+        .contains("Found 1 security issues")
+        .contains("[MEDIUM] B303 use_of_weak_hash")
+        .contains("Crypto.java:42")
+        .contains("Most Complex Methods")
+        .contains("process in Service.java:18 — Cyclomatic Complexity = 21");
+  }
+
+  @Test
   void parseRecommendations_capsAtMax() {
     StringBuilder buf = new StringBuilder();
     for (int i = 0; i < 5; i++) {

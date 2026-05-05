@@ -9,11 +9,12 @@ dependencies {
     "implementation"(project(":mfcqi-security"))
     "implementation"(project(":mfcqi-deps-security"))
     "implementation"(project(":mfcqi-analysis"))
-    "implementation"(project(":mfcqi-quality-gates"))
+    "api"(project(":mfcqi-quality-gates"))
     "implementation"(project(":mfcqi-badge"))
-    // Picocli — Apache 2.0, no API key. Annotation processor is recommended for help-output
-    // generation but optional; we keep the build lean by skipping it.
+    // Picocli — Apache 2.0, no API key.
     "implementation"("info.picocli:picocli:4.7.6")
-    // Jackson for JSON output of analyze results (already a transitive dep).
+    // Jackson for JSON / SARIF rendering.
     "implementation"("com.fasterxml.jackson.core:jackson-databind:2.18.2")
+    // JavaParser — ToolOutputCollector walks ASTs to find complexity hotspots for the LLM prompt.
+    "implementation"("com.github.javaparser:javaparser-core:3.26.4")
 }

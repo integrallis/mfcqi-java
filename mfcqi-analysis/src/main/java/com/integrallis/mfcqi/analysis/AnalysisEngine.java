@@ -61,9 +61,24 @@ public final class AnalysisEngine {
       Map<String, Double> metrics,
       int recommendationCount,
       AnalysisConfig config) {
+    return analyze(codebasePath, metrics, ToolOutputs.empty(), recommendationCount, config);
+  }
+
+  /**
+   * Analyze pre-calculated metrics with raw tool-output context. The prompt template uses {@code
+   * tool_outputs.bandit.*} and {@code tool_outputs.complexity.*} sections (mirroring Python's
+   * {@code mfcqi/analysis/engine.py:_format_tool_outputs}), so populating {@code toolOutputs} gives
+   * the LLM concrete file:line evidence to ground each recommendation.
+   */
+  public AnalysisResult analyze(
+      String codebasePath,
+      Map<String, Double> metrics,
+      ToolOutputs toolOutputs,
+      int recommendationCount,
+      AnalysisConfig config) {
     config.validate();
     LLMProvider provider = pickProvider(config.model());
-    String prompt = renderPrompt(codebasePath, metrics, recommendationCount);
+    String prompt = renderPrompt(codebasePath, metrics, toolOutputs, recommendationCount);
     String response = provider.complete(prompt, config);
     List<String> recs = parseRecommendations(response, recommendationCount);
     Map<String, Double> metricScores = new LinkedHashMap<>(metrics);
@@ -81,6 +96,14 @@ public final class AnalysisEngine {
   }
 
   String renderPrompt(String codebasePath, Map<String, Double> metrics, int recommendationCount) {
+    return renderPrompt(codebasePath, metrics, ToolOutputs.empty(), recommendationCount);
+  }
+
+  String renderPrompt(
+      String codebasePath,
+      Map<String, Double> metrics,
+      ToolOutputs toolOutputs,
+      int recommendationCount) {
     Map<String, Object> ctx = new LinkedHashMap<>();
     ctx.put("codebase_path", codebasePath);
     ctx.put("recommendation_count", recommendationCount);
@@ -88,6 +111,9 @@ public final class AnalysisEngine {
     Double overall = metricScores.remove("mfcqi_score");
     ctx.put("mfcqi_score", overall == null ? Double.valueOf(0.0) : overall);
     ctx.put("metrics", metricScores);
+    ctx.put("tool_outputs", toolOutputs);
+    ctx.put("total_files", toolOutputs.getTotalFiles());
+    ctx.put("total_lines", toolOutputs.getTotalLines());
 
     List<Map<String, Object>> critical = new ArrayList<>();
     for (Map.Entry<String, Double> e : metricScores.entrySet()) {
