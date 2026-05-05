@@ -18,7 +18,9 @@ import java.util.Objects;
  *   <li>Dependency discovery: Maven {@code pom.xml} + Gradle {@code build.gradle(.kts)} via {@link
  *       DependencyExtractor} (analog of Python's glob-based file collection)
  *   <li>Vulnerability lookup: pluggable {@link VulnerabilityScanner}; defaults to {@link
- *       OfflineNoOpScanner} so the metric is reproducible without network access
+ *       OsvVulnerabilityScanner} so the metric actually scans dependencies via the public OSV.dev
+ *       API (no API key required), matching the behavior of the Python source's {@code pip-audit}
+ *       integration. Use {@link OfflineNoOpScanner} explicitly for reproducible offline tests.
  *   <li>Per-vulnerability weight: 2.0 (verbatim)
  *   <li>Normalization: {@code 0 -> 1.0; else exp(-count/5.0)} (verbatim)
  *   <li>Weight: 0.75 (verbatim)
@@ -36,7 +38,7 @@ public final class DependencySecurityMetric extends Metric<Double> {
   private final VulnerabilityScanner scanner;
 
   public DependencySecurityMetric() {
-    this(new OfflineNoOpScanner());
+    this(new OsvVulnerabilityScanner());
   }
 
   public DependencySecurityMetric(VulnerabilityScanner scanner) {
