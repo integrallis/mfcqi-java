@@ -14,13 +14,16 @@ class AnalysisConfigTest {
   @Test
   void defaults_matchPythonReference() {
     AnalysisConfig cfg = AnalysisConfig.builder().build();
-    assertThat(cfg.model()).isEqualTo("claude-3-5-sonnet-20241022");
+    // Default model id diverges from the Python source: claude-3-5-sonnet-20241022 has been
+    // retired by Anthropic and now returns HTTP 404, so the Java port pins the current Sonnet
+    // release. Other defaults (temperature, max tokens, timeout) match Python verbatim.
+    assertThat(cfg.model()).isEqualTo("claude-sonnet-4-5");
     assertThat(cfg.temperature()).isEqualTo(0.1);
     assertThat(cfg.maxTokens()).isEqualTo(8000);
     assertThat(cfg.timeoutSeconds()).isEqualTo(60);
     assertThat(cfg.supportedModels())
-        .containsExactly(
-            "claude-3-5-sonnet-20241022", "gpt-4o", "gpt-4o-mini", "gpt-5", "gpt-5-mini");
+        .contains("claude-sonnet-4-5", "gpt-4o", "gpt-4o-mini")
+        .doesNotContain("claude-3-5-sonnet-20241022");
   }
 
   @Test
@@ -34,7 +37,7 @@ class AnalysisConfigTest {
 
   @Test
   void validate_throwsForUnconfiguredHostedModel() {
-    AnalysisConfig cfg = AnalysisConfig.builder().model("claude-3-5-sonnet-20241022").build();
+    AnalysisConfig cfg = AnalysisConfig.builder().model("claude-sonnet-4-5").build();
     assertThatThrownBy(cfg::validate)
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("No API key");
@@ -51,7 +54,7 @@ class AnalysisConfigTest {
     Map<String, String> env = new HashMap<>();
     env.put("ANTHROPIC_API_KEY", "ak");
     AnalysisConfig cfg = AnalysisConfig.fromEnvironment(env::get);
-    assertThat(cfg.model()).isEqualTo("claude-3-5-sonnet-20241022");
+    assertThat(cfg.model()).isEqualTo("claude-sonnet-4-5");
     assertThat(cfg.anthropicApiKey()).contains("ak");
   }
 

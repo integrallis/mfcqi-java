@@ -56,7 +56,7 @@ class AnalysisEngineTest {
     StubProvider stub = new StubProvider(response);
     AnalysisEngine engine = new AnalysisEngine(Collections.singletonList(stub));
     AnalysisConfig cfg =
-        AnalysisConfig.builder().model("claude-3-5-sonnet-20241022").anthropicApiKey("k").build();
+        AnalysisConfig.builder().model("claude-sonnet-4-5").anthropicApiKey("k").build();
 
     Map<String, Double> metrics = new LinkedHashMap<>();
     metrics.put("mfcqi_score", 0.5);
@@ -67,7 +67,7 @@ class AnalysisEngineTest {
     assertThat(r.metricScores()).containsEntry("security", 0.1);
     assertThat(r.recommendations()).hasSize(2);
     assertThat(r.recommendations().get(0)).startsWith("[HIGH] Fix MD5 usage");
-    assertThat(r.modelUsed()).isEqualTo("claude-3-5-sonnet-20241022");
+    assertThat(r.modelUsed()).isEqualTo("claude-sonnet-4-5");
   }
 
   @Test

@@ -16,7 +16,13 @@ import java.util.Optional;
  */
 public final class AnalysisConfig {
 
-  public static final String DEFAULT_MODEL = "claude-3-5-sonnet-20241022";
+  /**
+   * Default model identifier. The Python source pins {@code claude-3-5-sonnet-20241022}; that model
+   * has been retired by Anthropic and now returns HTTP 404. We point the default at the current
+   * Anthropic Sonnet release. Override via {@code CQI_LLM_MODEL} or {@code --model}.
+   */
+  public static final String DEFAULT_MODEL = "claude-sonnet-4-5";
+
   public static final double DEFAULT_TEMPERATURE = 0.1;
   public static final int DEFAULT_MAX_TOKENS = 8000;
   public static final int DEFAULT_TIMEOUT_SECONDS = 60;
@@ -82,11 +88,21 @@ public final class AnalysisConfig {
     }
   }
 
-  /** Verbatim port of Python's {@code get_supported_models}. */
+  /**
+   * Supported model list. The Python source's list contained Anthropic and OpenAI identifiers that
+   * have shifted since publication; we list current production-ready model IDs here. The full set
+   * is informational — any provider-routable model name is accepted at runtime.
+   */
   public List<String> supportedModels() {
     return Collections.unmodifiableList(
         Arrays.asList(
-            "claude-3-5-sonnet-20241022", "gpt-4o", "gpt-4o-mini", "gpt-5", "gpt-5-mini"));
+            "claude-sonnet-4-5",
+            "claude-haiku-4-5",
+            "claude-opus-4-7",
+            "gpt-4o",
+            "gpt-4o-mini",
+            "gpt-5",
+            "gpt-5-mini"));
   }
 
   /** Build using environment variables (CQI_LLM_MODEL, ANTHROPIC_API_KEY, OPENAI_API_KEY). */
@@ -116,9 +132,10 @@ public final class AnalysisConfig {
     if (model != null && !model.isEmpty()) {
       b.model(model);
     } else {
-      // Python from_environment: prefer Claude, then OpenAI, else default.
+      // Python from_environment: prefer Claude, then OpenAI, else default. We use a current
+      // Anthropic model id rather than the Python source's retired one.
       if (env.apply("ANTHROPIC_API_KEY") != null) {
-        b.model("claude-3-5-sonnet-20241022");
+        b.model(DEFAULT_MODEL);
       } else if (env.apply("OPENAI_API_KEY") != null) {
         b.model("gpt-4o");
       }

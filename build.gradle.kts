@@ -55,7 +55,21 @@ configure(libraryProjects) {
 
     tasks.named<Test>("test") {
         useJUnitPlatform {
-            excludeTags("slow", "benchmark")
+            excludeTags("slow", "benchmark", "llm-integration")
+        }
+    }
+
+    tasks.register<Test>("llmIntegrationTest") {
+        description =
+            "Run LLM integration tests (require ANTHROPIC_API_KEY/OPENAI_API_KEY in env or .env)"
+        group = "verification"
+        testClassesDirs = sourceSets["test"].output.classesDirs
+        classpath = sourceSets["test"].runtimeClasspath
+        useJUnitPlatform {
+            includeTags("llm-integration")
+        }
+        testLogging {
+            events("passed", "skipped", "failed")
         }
     }
 

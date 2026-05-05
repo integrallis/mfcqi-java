@@ -69,7 +69,7 @@ public final class AnalyzeCommand implements Callable<Integer> {
 
   @Option(
       names = {"--model"},
-      description = "Override LLM model (e.g., claude-3-5-sonnet-20241022, gpt-4o, ollama:llama3).")
+      description = "Override LLM model (e.g., claude-sonnet-4-5, gpt-4o, ollama:llama3).")
   String model;
 
   @Option(

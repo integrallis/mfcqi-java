@@ -105,7 +105,7 @@ class AnalyzeCommandTest {
             metrics,
             java.util.Arrays.asList(
                 "[HIGH] Fix MD5 in Crypto.java", "[MEDIUM] Reduce Service complexity"),
-            "claude-3-5-sonnet-20241022");
+            "claude-sonnet-4-5");
     String sarif = AnalyzeCommand.renderSarif(tmp, 0.7, metrics, llm);
     assertThat(sarif).contains("Recommendation 1: [HIGH] Fix MD5 in Crypto.java");
     assertThat(sarif).contains("Recommendation 2: [MEDIUM] Reduce Service complexity");
@@ -181,12 +181,10 @@ class AnalyzeCommandTest {
 
   @Test
   void defaultModelForProvider_mapsAllKnownProviders() {
-    assertThat(AnalyzeCommand.defaultModelForProvider("anthropic"))
-        .isEqualTo("claude-3-5-sonnet-20241022");
+    assertThat(AnalyzeCommand.defaultModelForProvider("anthropic")).isEqualTo("claude-sonnet-4-5");
     assertThat(AnalyzeCommand.defaultModelForProvider("openai")).isEqualTo("gpt-4o");
     assertThat(AnalyzeCommand.defaultModelForProvider("ollama")).isEqualTo("ollama:llama3");
-    assertThat(AnalyzeCommand.defaultModelForProvider("unknown"))
-        .isEqualTo("claude-3-5-sonnet-20241022");
+    assertThat(AnalyzeCommand.defaultModelForProvider("unknown")).isEqualTo("claude-sonnet-4-5");
   }
 
   @Test
