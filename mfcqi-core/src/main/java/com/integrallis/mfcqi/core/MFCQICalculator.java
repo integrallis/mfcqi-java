@@ -50,7 +50,9 @@ public final class MFCQICalculator {
 
   /** Calculate the MFCQI score for {@code codebase}. */
   public double calculate(Path codebase) {
-    if (codebase == null) {
+    if (codebase == null || hasNoAnalyzableSource(codebase)) {
+      // Mirrors mfcqi/calculator.py:115 — empty codebases get 0.0, not a partial score from
+      // metrics that happen to default to 1.0 on no input.
       return 0.0;
     }
     Map<String, Metric<?>> applicable = applicableMetrics(codebase);
@@ -70,12 +72,30 @@ public final class MFCQICalculator {
    */
   public Map<String, Double> detailedMetrics(Path codebase) {
     Map<String, Double> out = new LinkedHashMap<>();
+    if (codebase == null || hasNoAnalyzableSource(codebase)) {
+      // Empty codebase: emit the standard set of metric keys with 0.0 each so the JSON/SARIF
+      // schema is stable. Mirrors Python's get_detailed_metrics empty-path branch.
+      for (Metric<?> m : coreMetrics.values()) {
+        out.put(m.getName(), 0.0);
+      }
+      out.put("mfcqi_score", 0.0);
+      return out;
+    }
     Map<String, Metric<?>> applicable = applicableMetrics(codebase);
     for (Map.Entry<String, Metric<?>> e : applicable.entrySet()) {
       out.put(e.getKey(), safeNormalize(e.getValue(), codebase));
     }
     out.put("mfcqi_score", calculate(codebase));
     return out;
+  }
+
+  /** True when the codebase is a directory with no {@code .java} files anywhere underneath. */
+  private static boolean hasNoAnalyzableSource(Path codebase) {
+    if (java.nio.file.Files.isRegularFile(codebase)) {
+      // Single-file mode: caller handed us a specific file; trust they wanted it scanned.
+      return false;
+    }
+    return JavaSourceFiles.findAll(codebase).isEmpty();
   }
 
   Map<String, Metric<?>> applicableMetrics(Path codebase) {

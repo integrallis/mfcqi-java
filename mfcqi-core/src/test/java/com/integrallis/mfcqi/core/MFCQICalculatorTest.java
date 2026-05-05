@@ -39,13 +39,15 @@ class MFCQICalculatorTest {
   }
 
   @Test
-  void calculate_withZeroMetricsReturnsZero(@TempDir Path tmp) {
+  void calculate_withZeroMetricsReturnsZero(@TempDir Path tmp) throws java.io.IOException {
+    seedJavaFile(tmp);
     MFCQICalculator calc = MFCQICalculator.builder().build();
     assertThat(calc.calculate(tmp)).isEqualTo(0.0);
   }
 
   @Test
-  void calculate_combinesStubMetrics(@TempDir Path tmp) {
+  void calculate_combinesStubMetrics(@TempDir Path tmp) throws java.io.IOException {
+    seedJavaFile(tmp);
     MFCQICalculator calc =
         MFCQICalculator.builder()
             .addCoreMetric(new ConstantMetric("a", 1.0))
@@ -57,7 +59,8 @@ class MFCQICalculatorTest {
   }
 
   @Test
-  void detailedMetrics_includesEachMetricAndOverall(@TempDir Path tmp) {
+  void detailedMetrics_includesEachMetricAndOverall(@TempDir Path tmp) throws java.io.IOException {
+    seedJavaFile(tmp);
     MFCQICalculator calc =
         MFCQICalculator.builder()
             .addCoreMetric(new ConstantMetric("a", 0.9))
@@ -72,7 +75,39 @@ class MFCQICalculatorTest {
   }
 
   @Test
-  void calculate_failingMetricFallsToZeroAndIsFloored(@TempDir Path tmp) {
+  void calculate_emptyCodebaseShortCircuitsToZero(@TempDir Path tmp) {
+    // No .java files anywhere — Python returns 0.0 to avoid misleading partial scores from
+    // metrics that default to 1.0 on empty input.
+    MFCQICalculator calc =
+        MFCQICalculator.builder()
+            .addCoreMetric(new ConstantMetric("a", 1.0))
+            .addCoreMetric(new ConstantMetric("b", 1.0))
+            .build();
+    assertThat(calc.calculate(tmp)).isEqualTo(0.0);
+  }
+
+  @Test
+  void detailedMetrics_emptyCodebaseEmitsAllZeros(@TempDir Path tmp) {
+    MFCQICalculator calc =
+        MFCQICalculator.builder()
+            .addCoreMetric(new ConstantMetric("a", 1.0))
+            .addCoreMetric(new ConstantMetric("b", 1.0))
+            .build();
+    java.util.Map<String, Double> detail = calc.detailedMetrics(tmp);
+    assertThat(detail.get("a")).isEqualTo(0.0);
+    assertThat(detail.get("b")).isEqualTo(0.0);
+    assertThat(detail.get("mfcqi_score")).isEqualTo(0.0);
+  }
+
+  private static void seedJavaFile(Path tmp) throws java.io.IOException {
+    Path src = java.nio.file.Files.createDirectories(tmp.resolve("src/main/java"));
+    java.nio.file.Files.writeString(src.resolve("X.java"), "public class X {}");
+  }
+
+  @Test
+  void calculate_failingMetricFallsToZeroAndIsFloored(@TempDir Path tmp)
+      throws java.io.IOException {
+    seedJavaFile(tmp);
     MFCQICalculator calc =
         MFCQICalculator.builder()
             .addCoreMetric(new ConstantMetric("good", 1.0))
