@@ -50,8 +50,8 @@ class MFCQICalculatorTest {
     seedJavaFile(tmp);
     MFCQICalculator calc =
         MFCQICalculator.builder()
-            .addCoreMetric(new ConstantMetric("a", 1.0))
-            .addCoreMetric(new ConstantMetric("b", 0.5))
+            .addMetric(new ConstantMetric("a", 1.0))
+            .addMetric(new ConstantMetric("b", 0.5))
             .build();
 
     double expected = Math.pow(1.0 * 0.5, 0.5);
@@ -63,8 +63,8 @@ class MFCQICalculatorTest {
     seedJavaFile(tmp);
     MFCQICalculator calc =
         MFCQICalculator.builder()
-            .addCoreMetric(new ConstantMetric("a", 0.9))
-            .addCoreMetric(new ConstantMetric("b", 0.7))
+            .addMetric(new ConstantMetric("a", 0.9))
+            .addMetric(new ConstantMetric("b", 0.7))
             .build();
 
     java.util.Map<String, Double> detail = calc.detailedMetrics(tmp);
@@ -80,8 +80,8 @@ class MFCQICalculatorTest {
     // metrics that default to 1.0 on empty input.
     MFCQICalculator calc =
         MFCQICalculator.builder()
-            .addCoreMetric(new ConstantMetric("a", 1.0))
-            .addCoreMetric(new ConstantMetric("b", 1.0))
+            .addMetric(new ConstantMetric("a", 1.0))
+            .addMetric(new ConstantMetric("b", 1.0))
             .build();
     assertThat(calc.calculate(tmp)).isEqualTo(0.0);
   }
@@ -90,8 +90,8 @@ class MFCQICalculatorTest {
   void detailedMetrics_emptyCodebaseEmitsAllZeros(@TempDir Path tmp) {
     MFCQICalculator calc =
         MFCQICalculator.builder()
-            .addCoreMetric(new ConstantMetric("a", 1.0))
-            .addCoreMetric(new ConstantMetric("b", 1.0))
+            .addMetric(new ConstantMetric("a", 1.0))
+            .addMetric(new ConstantMetric("b", 1.0))
             .build();
     java.util.Map<String, Double> detail = calc.detailedMetrics(tmp);
     assertThat(detail.get("a")).isEqualTo(0.0);
@@ -110,8 +110,8 @@ class MFCQICalculatorTest {
     seedJavaFile(tmp);
     MFCQICalculator calc =
         MFCQICalculator.builder()
-            .addCoreMetric(new ConstantMetric("good", 1.0))
-            .addCoreMetric(new ThrowingMetric("bad"))
+            .addMetric(new ConstantMetric("good", 1.0))
+            .addMetric(new ThrowingMetric("bad"))
             .build();
 
     // bad -> 0.0 -> floored to 0.1, good -> 1.0 -> sqrt(0.1) ~= 0.3162

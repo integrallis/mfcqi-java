@@ -15,9 +15,8 @@ import org.slf4j.LoggerFactory;
  * individual {@link Metric} results with a weighted geometric mean.
  *
  * <p>This class is the framework-level orchestrator; it knows nothing about specific metrics.
- * Callers register {@code Metric} instances (always-on "core" metrics) and optionally a {@link
- * ParadigmDetector} that selects additional OO metrics based on the codebase's paradigm. The
- * concrete metric implementations and the default registry live in {@code mfcqi-metrics}.
+ * Callers register {@code Metric} instances and the calculator applies all of them on every
+ * codebase. Concrete metric implementations and the default registry live in {@code mfcqi-metrics}.
  *
  * <p>The geometric mean uses the same {@code min_threshold = 0.1} floor as the Python reference:
  * any single zero is treated as 0.1 so that a missing tool output cannot collapse the entire score.
@@ -30,18 +29,10 @@ public final class MFCQICalculator {
   /** Floor applied to each value before multiplying — matches Python reference. */
   static final double GEOMETRIC_MEAN_FLOOR = 0.1;
 
-  private final Map<String, Metric<?>> coreMetrics;
-  private final Map<Paradigm, Map<String, Metric<?>>> paradigmMetrics;
-  private final ParadigmDetector paradigmDetector;
+  private final Map<String, Metric<?>> metrics;
 
   private MFCQICalculator(Builder b) {
-    this.coreMetrics = Collections.unmodifiableMap(new LinkedHashMap<>(b.coreMetrics));
-    LinkedHashMap<Paradigm, Map<String, Metric<?>>> pm = new LinkedHashMap<>();
-    for (Map.Entry<Paradigm, LinkedHashMap<String, Metric<?>>> e : b.paradigmMetrics.entrySet()) {
-      pm.put(e.getKey(), Collections.unmodifiableMap(new LinkedHashMap<>(e.getValue())));
-    }
-    this.paradigmMetrics = Collections.unmodifiableMap(pm);
-    this.paradigmDetector = b.paradigmDetector;
+    this.metrics = Collections.unmodifiableMap(new LinkedHashMap<>(b.metrics));
   }
 
   public static Builder builder() {
@@ -55,12 +46,11 @@ public final class MFCQICalculator {
       // metrics that happen to default to 1.0 on no input.
       return 0.0;
     }
-    Map<String, Metric<?>> applicable = applicableMetrics(codebase);
-    if (applicable.isEmpty()) {
+    if (metrics.isEmpty()) {
       return 0.0;
     }
-    List<Double> normalized = new ArrayList<>(applicable.size());
-    for (Metric<?> m : applicable.values()) {
+    List<Double> normalized = new ArrayList<>(metrics.size());
+    for (Metric<?> m : metrics.values()) {
       normalized.add(safeNormalize(m, codebase));
     }
     return geometricMean(normalized);
@@ -75,14 +65,13 @@ public final class MFCQICalculator {
     if (codebase == null || hasNoAnalyzableSource(codebase)) {
       // Empty codebase: emit the standard set of metric keys with 0.0 each so the JSON/SARIF
       // schema is stable. Mirrors Python's get_detailed_metrics empty-path branch.
-      for (Metric<?> m : coreMetrics.values()) {
+      for (Metric<?> m : metrics.values()) {
         out.put(m.getName(), 0.0);
       }
       out.put("mfcqi_score", 0.0);
       return out;
     }
-    Map<String, Metric<?>> applicable = applicableMetrics(codebase);
-    for (Map.Entry<String, Metric<?>> e : applicable.entrySet()) {
+    for (Map.Entry<String, Metric<?>> e : metrics.entrySet()) {
       out.put(e.getKey(), safeNormalize(e.getValue(), codebase));
     }
     out.put("mfcqi_score", calculate(codebase));
@@ -96,23 +85,6 @@ public final class MFCQICalculator {
       return false;
     }
     return JavaSourceFiles.findAll(codebase).isEmpty();
-  }
-
-  Map<String, Metric<?>> applicableMetrics(Path codebase) {
-    LinkedHashMap<String, Metric<?>> result = new LinkedHashMap<>(coreMetrics);
-    if (paradigmDetector == null || paradigmMetrics.isEmpty()) {
-      return result;
-    }
-    try {
-      ParadigmDetection detection = paradigmDetector.detect(codebase);
-      Map<String, Metric<?>> extra = paradigmMetrics.get(detection.paradigm());
-      if (extra != null) {
-        result.putAll(extra);
-      }
-    } catch (RuntimeException e) {
-      LOG.debug("Paradigm detection failed; falling back to core metrics only", e);
-    }
-    return result;
   }
 
   private static <T> double safeNormalize(Metric<T> metric, Path codebase) {
@@ -154,30 +126,13 @@ public final class MFCQICalculator {
 
   /** Fluent builder for {@link MFCQICalculator}. */
   public static final class Builder {
-    private final LinkedHashMap<String, Metric<?>> coreMetrics = new LinkedHashMap<>();
-    private final LinkedHashMap<Paradigm, LinkedHashMap<String, Metric<?>>> paradigmMetrics =
-        new LinkedHashMap<>();
-    private ParadigmDetector paradigmDetector;
+    private final LinkedHashMap<String, Metric<?>> metrics = new LinkedHashMap<>();
 
     private Builder() {}
 
-    public Builder addCoreMetric(Metric<?> metric) {
+    public Builder addMetric(Metric<?> metric) {
       Objects.requireNonNull(metric, "metric");
-      coreMetrics.put(metric.getName(), metric);
-      return this;
-    }
-
-    public Builder addParadigmMetric(Paradigm paradigm, Metric<?> metric) {
-      Objects.requireNonNull(paradigm, "paradigm");
-      Objects.requireNonNull(metric, "metric");
-      paradigmMetrics
-          .computeIfAbsent(paradigm, p -> new LinkedHashMap<>())
-          .put(metric.getName(), metric);
-      return this;
-    }
-
-    public Builder paradigmDetector(ParadigmDetector detector) {
-      this.paradigmDetector = detector;
+      metrics.put(metric.getName(), metric);
       return this;
     }
 
