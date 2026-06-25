@@ -46,10 +46,11 @@ release:
   github:
     owner: integrallis
     name: mfcqi-java
-    # The release workflow triggers on an already-pushed tag, so do not recreate it.
+    # The release is triggered manually from the Actions UI (no pre-pushed tag); JReleaser
+    # creates the tag v<version> on the current commit during the real (non-dry-run) release.
     tagName: 'v{{projectVersion}}'
     releaseName: 'mfcqi-java {{projectVersion}}'
-    skipTag: true
+    skipTag: false
     overwrite: true
     changelog:
       formatted: ALWAYS
