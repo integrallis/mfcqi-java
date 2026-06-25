@@ -22,10 +22,21 @@ public final class QualityGateEvaluator {
 
   private final QualityGateConfig config;
 
+  /**
+   * Creates an evaluator bound to the given configuration.
+   *
+   * @param config the gate thresholds to evaluate against
+   * @throws NullPointerException if {@code config} is {@code null}
+   */
   public QualityGateEvaluator(QualityGateConfig config) {
     this.config = Objects.requireNonNull(config, "config");
   }
 
+  /**
+   * Returns the configuration this evaluator was constructed with.
+   *
+   * @return the bound {@link QualityGateConfig}
+   */
   public QualityGateConfig config() {
     return config;
   }

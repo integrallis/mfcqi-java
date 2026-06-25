@@ -26,6 +26,15 @@ Thumbs.db
 !.env.example
 credentials.json
 api-keys.txt
+# GPG signing keys (exported for CI secrets — must never be committed)
+*.asc
+*.gpg
+*.pgp
+signing-key*
+secring.*
+
+# JReleaser working output
+.jreleaser/
 
 # SpotBugs
 spotbugs-output.txt

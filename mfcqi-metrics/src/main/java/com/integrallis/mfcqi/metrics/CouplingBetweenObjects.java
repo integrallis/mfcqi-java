@@ -1,5 +1,7 @@
 package com.integrallis.mfcqi.metrics;
 
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
@@ -120,16 +122,17 @@ public final class CouplingBetweenObjects extends Metric<Double> {
     double sum = 0.0;
     int count = 0;
     for (ParsedFile file : files) {
+      Set<String> jdkTypes = jdkImportedSimpleNames(file.compilationUnit());
       for (ClassOrInterfaceDeclaration cls :
           file.compilationUnit().findAll(ClassOrInterfaceDeclaration.class)) {
-        sum += cboForClass(cls);
+        sum += cboForClass(cls, jdkTypes);
         count++;
       }
     }
     return count == 0 ? 0.0 : sum / count;
   }
 
-  private static double cboForClass(ClassOrInterfaceDeclaration cls) {
+  private static double cboForClass(ClassOrInterfaceDeclaration cls, Set<String> jdkTypes) {
     Set<String> coupled = new HashSet<>();
     coupled.addAll(methodCoupling(cls));
     coupled.addAll(annotationCoupling(cls));
@@ -139,11 +142,35 @@ public final class CouplingBetweenObjects extends Metric<Double> {
     String selfName = cls.getNameAsString();
     Set<String> filtered = new HashSet<>();
     for (String s : coupled) {
-      if (!s.equals(selfName) && isMeaningfulCoupling(s) && isExternalType(s)) {
+      // Exclude self, noise, language built-ins, AND JDK/library types imported from
+      // java.*/javax.*/jakarta.*. The Python reference effectively counts only project-level
+      // couplings (its stdlib entry points fall in its builtin/noise lists); a statically-typed
+      // Java signature names a JDK type (Path, Logger, Stream, IOException, …) on nearly every
+      // member, so without this exclusion CBO is inflated far above the Python-equivalent value.
+      if (!s.equals(selfName)
+          && isMeaningfulCoupling(s)
+          && isExternalType(s)
+          && !jdkTypes.contains(s)) {
         filtered.add(s);
       }
     }
     return filtered.size();
+  }
+
+  /** Simple names imported from the JDK / Jakarta namespaces — treated as non-project couplings. */
+  private static Set<String> jdkImportedSimpleNames(CompilationUnit cu) {
+    Set<String> names = new HashSet<>();
+    for (ImportDeclaration imp : cu.getImports()) {
+      if (imp.isAsterisk()) {
+        continue;
+      }
+      String fqn = imp.getNameAsString();
+      if (fqn.startsWith("java.") || fqn.startsWith("javax.") || fqn.startsWith("jakarta.")) {
+        int dot = fqn.lastIndexOf('.');
+        names.add(dot < 0 ? fqn : fqn.substring(dot + 1));
+      }
+    }
+    return names;
   }
 
   /** Port of {@code _get_method_coupling}. */
@@ -178,10 +205,10 @@ public final class CouplingBetweenObjects extends Metric<Double> {
       }
     }
     for (MethodCallExpr call : cls.findAll(MethodCallExpr.class)) {
-      // Python branches: `Func()` -> Func; `obj.method()` -> obj.
-      if (!call.getScope().isPresent()) {
-        coupled.add(call.getNameAsString());
-      } else {
+      // Only qualified calls `obj.method()` couple to `obj`. An unqualified `foo()` in Java is a
+      // call to a method of this class (or a static import) — a local/inherited method, not an
+      // external coupling — so unlike the Python port we do not add the bare call name.
+      if (call.getScope().isPresent()) {
         Node scope = call.getScope().get();
         if (scope instanceof NameExpr) {
           coupled.add(((NameExpr) scope).getNameAsString());

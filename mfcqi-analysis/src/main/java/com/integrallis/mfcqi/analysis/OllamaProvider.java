@@ -14,14 +14,21 @@ import java.util.Map;
  */
 public final class OllamaProvider implements LLMProvider {
 
+  /** The default Ollama endpoint matching the Python reference: {@code http://localhost:11434}. */
   public static final String DEFAULT_ENDPOINT = "http://localhost:11434";
 
   private final String endpoint;
 
+  /** Creates a provider targeting the default local Ollama endpoint. */
   public OllamaProvider() {
     this(DEFAULT_ENDPOINT);
   }
 
+  /**
+   * Creates a provider targeting a custom Ollama endpoint.
+   *
+   * @param endpoint the base URL of the Ollama server (without the {@code /api/chat} path)
+   */
   public OllamaProvider(String endpoint) {
     this.endpoint = endpoint;
   }

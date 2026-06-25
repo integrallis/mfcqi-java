@@ -138,6 +138,12 @@ public final class JavaSourceFiles {
   private static boolean isExcluded(Path file) {
     for (Path part : file) {
       String name = part.toString();
+      // The current-dir/parent-dir tokens are not hidden directories: they appear in any
+      // relative path (e.g. walking "." for `mfcqi analyze .`) and must not trigger the
+      // dotfile-exclusion rule below — otherwise every file under a relative root is dropped.
+      if (name.equals(".") || name.equals("..")) {
+        continue;
+      }
       if (EXCLUDED_DIRS.contains(name) || name.startsWith(".")) {
         return true;
       }

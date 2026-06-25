@@ -37,15 +37,25 @@ public final class DependencySecurityMetric extends Metric<Double> {
 
   private final VulnerabilityScanner scanner;
 
+  /** Creates a metric backed by the default {@link OsvVulnerabilityScanner}. */
   public DependencySecurityMetric() {
     this(new OsvVulnerabilityScanner());
   }
 
+  /**
+   * Creates a metric backed by the supplied scanner.
+   *
+   * @param scanner the vulnerability scanner each dependency is dispatched to
+   */
   public DependencySecurityMetric(VulnerabilityScanner scanner) {
     this.scanner = Objects.requireNonNull(scanner, "scanner");
   }
 
-  /** The {@link VulnerabilityScanner} this metric will dispatch each dependency to. */
+  /**
+   * The {@link VulnerabilityScanner} this metric will dispatch each dependency to.
+   *
+   * @return the scanner
+   */
   public VulnerabilityScanner scanner() {
     return scanner;
   }

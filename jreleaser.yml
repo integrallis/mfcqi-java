@@ -1,0 +1,66 @@
+# JReleaser configuration.
+#
+# Two responsibilities:
+#   1. deploy  -> sign the staged library artifacts and upload them to Maven Central
+#                 (Central Portal) as a single deployment.
+#   2. release -> create the GitHub Release with a conventional-commits changelog and
+#                 attach the CLI distribution archives.
+#
+# The project version is auto-detected from gradle.properties; the release workflow
+# also passes it explicitly via JRELEASER_PROJECT_VERSION.
+#
+# Docs: https://jreleaser.org/guide/latest/
+
+project:
+  name: mfcqi-java
+  description: Multi-Factor Code Quality Index for Java — a single 0.0–1.0 code quality score
+  longDescription: |
+    MFCQI (Multi-Factor Code Quality Index) combines evidence-based static-analysis
+    metrics into a single code quality score (0.0–1.0) using a geometric mean.
+    This is the Java edition; its sibling is the Python project of the same name.
+  authors:
+    - Brian Sam-Bodden
+  license: MIT
+  inceptionYear: "2025"
+  links:
+    homepage: https://github.com/integrallis/mfcqi-java
+
+# Artifacts uploaded to Maven Central must be GPG-signed.
+signing:
+  active: ALWAYS
+  armored: true
+
+deploy:
+  maven:
+    mavenCentral:
+      sonatype:
+        active: RELEASE
+        url: https://central.sonatype.com/api/v1/publisher
+        # JReleaser validates POM completeness (name/description/url/license/
+        # developers/scm) and the presence of -sources/-javadoc jars.
+        applyMavenCentralRules: true
+        stagingRepositories:
+          - build/staging-deploy
+
+release:
+  github:
+    owner: integrallis
+    name: mfcqi-java
+    # The release workflow triggers on an already-pushed tag, so do not recreate it.
+    tagName: 'v{{projectVersion}}'
+    releaseName: 'mfcqi-java {{projectVersion}}'
+    skipTag: true
+    overwrite: true
+    changelog:
+      formatted: ALWAYS
+      preset: conventional-commits
+      contributors:
+        enabled: false
+
+# Attach the runnable CLI distribution (built by :mfcqi-cli:distZip / :distTar)
+# to the GitHub Release.
+files:
+  active: ALWAYS
+  artifacts:
+    - path: mfcqi-cli/build/distributions/mfcqi-{{projectVersion}}.zip
+    - path: mfcqi-cli/build/distributions/mfcqi-{{projectVersion}}.tar

@@ -1,0 +1,82 @@
+name: Release
+
+# Publishes a tagged release:
+#   - the 10 library modules -> Maven Central (Central Portal) via JReleaser
+#   - the CLI distribution    -> a GitHub Release (with changelog) via JReleaser
+#
+# Trigger by pushing a tag, e.g.:  git tag v0.1.0 && git push origin v0.1.0
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   MAVENCENTRAL_USERNAME  - Central Portal user token name
+#   MAVENCENTRAL_PASSWORD  - Central Portal user token password
+#   GPG_PUBLIC_KEY         - ASCII-armored GPG public key
+#   GPG_SECRET_KEY         - ASCII-armored GPG private key
+#   GPG_PASSPHRASE         - passphrase for the GPG private key
+# (GITHUB_TOKEN is provided automatically.)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # create the GitHub Release
+
+jobs:
+  release:
+    name: Release to Maven Central + GitHub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so JReleaser can build the changelog
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '21'
+
+      - name: Build, test, and stage artifacts
+        run: >
+          ./gradlew build publish
+          :mfcqi-cli:distZip :mfcqi-cli:distTar
+          --no-daemon --stacktrace
+
+      - name: Resolve project version
+        id: version
+        run: echo "version=$(grep -E '^version' gradle.properties | sed -E 's/.*=[[:space:]]*//')" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to Maven Central
+        uses: jreleaser/release-action@v2
+        with:
+          arguments: deploy
+        env:
+          JRELEASER_PROJECT_VERSION: ${{ steps.version.outputs.version }}
+          JRELEASER_MAVENCENTRAL_SONATYPE_USERNAME: ${{ secrets.MAVENCENTRAL_USERNAME }}
+          JRELEASER_MAVENCENTRAL_SONATYPE_PASSWORD: ${{ secrets.MAVENCENTRAL_PASSWORD }}
+          JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+          JRELEASER_GPG_SECRET_KEY: ${{ secrets.GPG_SECRET_KEY }}
+          JRELEASER_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Publish GitHub Release
+        uses: jreleaser/release-action@v2
+        with:
+          arguments: release
+        env:
+          JRELEASER_PROJECT_VERSION: ${{ steps.version.outputs.version }}
+          JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+          JRELEASER_GPG_SECRET_KEY: ${{ secrets.GPG_SECRET_KEY }}
+          JRELEASER_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Upload JReleaser logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jreleaser-logs
+          path: |
+            out/jreleaser/trace.log
+            out/jreleaser/output.properties

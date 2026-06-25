@@ -45,7 +45,14 @@ public final class DependencyExtractor {
 
   private DependencyExtractor() {}
 
-  /** Find every dependency declared anywhere under {@code root}. */
+  /**
+   * Find every dependency declared anywhere under {@code root}. Walks the tree for Maven {@code
+   * pom.xml} and Gradle {@code build.gradle(.kts)} files and aggregates their declared
+   * dependencies.
+   *
+   * @param root the directory to search; a non-directory or {@code null} yields an empty list
+   * @return the discovered dependencies (possibly with duplicates across files)
+   */
   public static List<Dependency> extractAll(Path root) {
     if (root == null || !Files.isDirectory(root)) {
       return Collections.emptyList();

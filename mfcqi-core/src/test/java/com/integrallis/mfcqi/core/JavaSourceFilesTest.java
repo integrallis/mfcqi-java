@@ -70,6 +70,37 @@ class JavaSourceFilesTest {
   }
 
   @Test
+  void findAll_walksRelativeCurrentDirRootWithoutExcludingEverything(@TempDir Path root)
+      throws Exception {
+    // Regression for `mfcqi analyze .`: when the codebase root contains a current-dir (".")
+    // element, every walked file path has a "." component. That token must NOT be treated as a
+    // hidden directory — otherwise discovery returns zero files and the score collapses to 0.0.
+    // Previously every test passed an absolute @TempDir, so the "." token was never exercised.
+    Files.writeString(
+        Files.createDirectories(root.resolve("src/main/java")).resolve("Keep.java"), "");
+    // A root path ending in "." (the same directory) — mirrors Files.walk(Path.of(".")).
+    Path dottedRoot = root.resolve(".");
+
+    List<Path> found = JavaSourceFiles.findAll(dottedRoot);
+
+    assertThat(found).hasSize(1);
+    assertThat(found.get(0).getFileName().toString()).isEqualTo("Keep.java");
+    // A genuinely hidden directory under the same dotted root is still excluded.
+    Files.writeString(Files.createDirectories(root.resolve(".secret")).resolve("S.java"), "");
+    assertThat(JavaSourceFiles.findAll(dottedRoot)).hasSize(1);
+  }
+
+  @Test
+  void shouldAnalyzeFile_acceptsCurrentAndParentDirTokens() {
+    // "." and ".." are path navigation tokens, not hidden dirs.
+    assertThat(JavaSourceFiles.shouldAnalyzeFile(Path.of(".", "src", "main", "Keep.java")))
+        .isTrue();
+    assertThat(JavaSourceFiles.shouldAnalyzeFile(Path.of("..", "module", "Keep.java"))).isTrue();
+    // A real dotfile directory is still rejected.
+    assertThat(JavaSourceFiles.shouldAnalyzeFile(Path.of(".", ".git", "Keep.java"))).isFalse();
+  }
+
+  @Test
   void find_excludeTestsRemovesTestFilesByStemAndParentHeuristic(@TempDir Path root)
       throws Exception {
     // Python heuristic: `"test" in stem.lower() or "tests" in str(parent)`.

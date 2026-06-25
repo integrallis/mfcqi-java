@@ -15,7 +15,7 @@ import picocli.CommandLine.Command;
 @Command(
     name = "mfcqi",
     mixinStandardHelpOptions = true,
-    version = "mfcqi-java 0.1.0-SNAPSHOT",
+    version = "mfcqi-java 0.1.0",
     description = "Multi-Factor Code Quality Index for Java codebases.",
     subcommands = {
       AnalyzeCommand.class,
@@ -34,6 +34,12 @@ public final class Main implements Runnable {
     System.out.println("Run with --help to see available subcommands.");
   }
 
+  /**
+   * Process entry point. Parses {@code args} with Picocli, dispatches to the matching subcommand,
+   * and terminates the JVM with the resulting exit code.
+   *
+   * @param args command-line arguments
+   */
   public static void main(String[] args) {
     int exitCode = new CommandLine(new Main()).execute(args);
     System.exit(exitCode);

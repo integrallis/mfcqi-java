@@ -1,4 +1,23 @@
+plugins {
+    application
+}
+
 description = "Picocli-based CLI: analyze, badge, config, models subcommands"
+
+// The CLI is not published to Maven Central (see root build.gradle.kts). It is shipped
+// as a runnable distribution (zip/tar with a bin/mfcqi launcher) attached to the GitHub
+// Release. `installDist` produces a local install under build/install/mfcqi/.
+application {
+    applicationName = "mfcqi"
+    mainClass.set("com.integrallis.mfcqi.cli.Main")
+}
+
+distributions {
+    main {
+        // Archive base name -> mfcqi-<version>.zip / .tar (not mfcqi-cli-<version>).
+        distributionBaseName.set("mfcqi")
+    }
+}
 
 dependencies {
     "implementation"(project(":mfcqi-core"))

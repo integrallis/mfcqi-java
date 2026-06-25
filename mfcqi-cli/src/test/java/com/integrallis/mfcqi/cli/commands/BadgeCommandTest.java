@@ -51,4 +51,58 @@ class BadgeCommandTest {
     String out = stdout.toString(StandardCharsets.UTF_8);
     assertThat(out).contains("img.shields.io/badge/MFCQI-");
   }
+
+  private static Path sampleTree(Path tmp) throws Exception {
+    Path src = Files.createDirectories(tmp.resolve("src/main/java"));
+    Files.writeString(src.resolve("X.java"), "public class X { public int v() { return 1; } }");
+    return tmp;
+  }
+
+  @Test
+  void cli_jsonFormatOutputsEndpointJson(@TempDir Path tmp) throws Exception {
+    sampleTree(tmp);
+    int code = new CommandLine(new Main()).execute("badge", "--format", "json", tmp.toString());
+    assertThat(code).isZero();
+    String out = stdout.toString(StandardCharsets.UTF_8);
+    assertThat(out).contains("\"schemaVersion\"").contains("MFCQI");
+  }
+
+  @Test
+  void cli_markdownFormatOutputsMarkdownSnippet(@TempDir Path tmp) throws Exception {
+    sampleTree(tmp);
+    int code =
+        new CommandLine(new Main())
+            .execute("badge", "--format", "markdown", "--style", "for-the-badge", tmp.toString());
+    assertThat(code).isZero();
+    String out = stdout.toString(StandardCharsets.UTF_8);
+    assertThat(out).contains("![MFCQI Score]").contains("img.shields.io");
+  }
+
+  @Test
+  void cli_unknownFormatFallsBackToUrl(@TempDir Path tmp) throws Exception {
+    sampleTree(tmp);
+    int code = new CommandLine(new Main()).execute("badge", "-f", "bogus", tmp.toString());
+    assertThat(code).isZero();
+    assertThat(stdout.toString(StandardCharsets.UTF_8)).contains("img.shields.io/badge/MFCQI-");
+  }
+
+  @Test
+  void cli_writesArtifactToOutputFile(@TempDir Path tmp) throws Exception {
+    sampleTree(tmp);
+    Path out = tmp.resolve("badge.txt");
+    int code = new CommandLine(new Main()).execute("badge", "-o", out.toString(), tmp.toString());
+    assertThat(code).isZero();
+    assertThat(Files.readString(out)).contains("img.shields.io/badge/MFCQI-");
+    // Nothing printed to stdout when writing to a file.
+    assertThat(stdout.toString(StandardCharsets.UTF_8)).doesNotContain("img.shields.io");
+  }
+
+  @Test
+  void cli_returnsTwoWhenOutputPathIsUnwritable(@TempDir Path tmp) throws Exception {
+    sampleTree(tmp);
+    // Output path points into a nonexistent directory -> Files.write throws IOException.
+    Path bad = tmp.resolve("missing-dir").resolve("badge.txt");
+    int code = new CommandLine(new Main()).execute("badge", "-o", bad.toString(), tmp.toString());
+    assertThat(code).isEqualTo(2);
+  }
 }

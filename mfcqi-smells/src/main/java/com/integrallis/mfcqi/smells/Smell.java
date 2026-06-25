@@ -51,34 +51,78 @@ public final class Smell {
     this.severityWeight = severityWeight;
   }
 
+  /**
+   * Returns the smell type identifier (e.g. {@code "LONG_METHOD"}). Together with {@link
+   * #location()} it forms the de-duplication key.
+   *
+   * @return the smell type id
+   */
   public String id() {
     return id;
   }
 
+  /**
+   * Returns the human-readable smell name (e.g. {@code "Long Method"}).
+   *
+   * @return the display name
+   */
   public String name() {
     return name;
   }
 
+  /**
+   * Returns the category this smell belongs to, which drives per-category weighting.
+   *
+   * @return the smell category
+   */
   public SmellCategory category() {
     return category;
   }
 
+  /**
+   * Returns the severity bucket of this smell.
+   *
+   * @return the severity
+   */
   public SmellSeverity severity() {
     return severity;
   }
 
+  /**
+   * Returns the source location of the smell, typically {@code path:line}. Together with {@link
+   * #id()} it forms the de-duplication key.
+   *
+   * @return the source location
+   */
   public String location() {
     return location;
   }
 
+  /**
+   * Returns the identifier of the detector that emitted this smell.
+   *
+   * @return the emitting tool name
+   */
   public String tool() {
     return tool;
   }
 
+  /**
+   * Returns the descriptive message explaining the smell and the threshold it exceeded.
+   *
+   * @return the description
+   */
   public String description() {
     return description;
   }
 
+  /**
+   * Returns the weight contributed by this smell when aggregating severity-weighted counts.
+   * Defaults to the {@link #severity()}'s default weight unless explicitly overridden at
+   * construction.
+   *
+   * @return the severity weight
+   */
   public double severityWeight() {
     return severityWeight;
   }

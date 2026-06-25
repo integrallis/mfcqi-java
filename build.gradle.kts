@@ -1,10 +1,9 @@
 plugins {
     java
     `java-library`
-    `maven-publish`
+    jacoco
     id("com.github.spotbugs") version "6.4.4" apply false
     id("com.diffplug.spotless") version "6.25.0" apply false
-    jacoco
 }
 
 allprojects {
@@ -15,12 +14,17 @@ allprojects {
     }
 }
 
-val libraryProjects = subprojects
+// Every module except the CLI is published to Maven Central as a library.
+// The CLI is shipped as a runnable distribution attached to a GitHub Release
+// (see mfcqi-cli/build.gradle.kts and jreleaser.yml).
+val libraryProjects = subprojects.filterNot { it.name == "mfcqi-cli" }
 
-configure(libraryProjects) {
+// ---------------------------------------------------------------------------
+// Common configuration applied to ALL modules (libraries + CLI)
+// ---------------------------------------------------------------------------
+configure(subprojects) {
     apply(plugin = "java")
     apply(plugin = "java-library")
-    apply(plugin = "maven-publish")
     apply(plugin = "com.github.spotbugs")
     apply(plugin = "com.diffplug.spotless")
     apply(plugin = "jacoco")
@@ -131,7 +135,9 @@ configure(libraryProjects) {
         }
     }
 
+    // Uniform 80% instruction-coverage gate across every module.
     tasks.jacocoTestCoverageVerification {
+        dependsOn(tasks.test)
         violationRules {
             rule {
                 limit {
@@ -139,6 +145,11 @@ configure(libraryProjects) {
                 }
             }
         }
+    }
+
+    // Enforce the coverage gate as part of `check` (and therefore `build`).
+    tasks.named("check") {
+        dependsOn(tasks.jacocoTestCoverageVerification)
     }
 
     dependencies {
@@ -153,21 +164,64 @@ configure(libraryProjects) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Publishing: only the library modules are published to Maven Central.
+// Each module stages into a single shared directory (build/staging-deploy)
+// so JReleaser can sign and upload the whole set as one Central deployment.
+// ---------------------------------------------------------------------------
+configure(libraryProjects) {
+    apply(plugin = "maven-publish")
+
+    configure<PublishingExtension> {
+        publications {
+            create<MavenPublication>("maven") {
+                from(components["java"])
+                pom {
+                    name.set(project.name)
+                    description.set(provider { project.description ?: "MFCQI — ${project.name}" })
+                    url.set("https://github.com/integrallis/mfcqi-java")
+                    licenses {
+                        license {
+                            name.set("MIT License")
+                            url.set("https://opensource.org/licenses/MIT")
+                            distribution.set("repo")
+                        }
+                    }
+                    developers {
+                        developer {
+                            id.set("bsbodden")
+                            name.set("Brian Sam-Bodden")
+                            email.set("bsbodden@gmail.com")
+                            organization.set("Integrallis Software")
+                            organizationUrl.set("https://integrallis.com")
+                        }
+                    }
+                    scm {
+                        connection.set("scm:git:https://github.com/integrallis/mfcqi-java.git")
+                        developerConnection.set("scm:git:ssh://git@github.com/integrallis/mfcqi-java.git")
+                        url.set("https://github.com/integrallis/mfcqi-java")
+                    }
+                }
+            }
+        }
+        repositories {
+            maven {
+                name = "staging"
+                url = uri(rootProject.layout.buildDirectory.dir("staging-deploy").get().asFile)
+            }
+        }
+    }
+}
+
 tasks.wrapper {
     gradleVersion = "9.4.1"
     distributionType = Wrapper.DistributionType.ALL
 }
 
-tasks.register<Javadoc>("aggregateJavadoc") {
+val aggregateJavadoc = tasks.register<Javadoc>("aggregateJavadoc") {
     description = "Generate aggregated Javadoc for all library modules"
     group = "documentation"
 
-    libraryProjects.forEach { proj ->
-        proj.afterEvaluate {
-            source(proj.the<SourceSetContainer>()["main"].allJava)
-            classpath += files(proj.the<SourceSetContainer>()["main"].compileClasspath)
-        }
-    }
     setDestinationDir(layout.buildDirectory.dir("docs/javadoc/aggregate").get().asFile)
 
     (options as StandardJavadocDocletOptions).apply {
@@ -182,4 +236,16 @@ tasks.register<Javadoc>("aggregateJavadoc") {
     }
 
     isFailOnError = false
+}
+
+// Wire the per-module sources/classpath into the aggregate task only after every
+// project has been evaluated. Doing this inside the task body via afterEvaluate is
+// illegal once configuration has progressed and breaks `./gradlew tasks` at the root.
+gradle.projectsEvaluated {
+    aggregateJavadoc.configure {
+        libraryProjects.forEach { proj ->
+            source(proj.the<SourceSetContainer>()["main"].allJava)
+            classpath += files(proj.the<SourceSetContainer>()["main"].compileClasspath)
+        }
+    }
 }

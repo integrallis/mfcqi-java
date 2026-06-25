@@ -1,6 +1,8 @@
 package com.integrallis.mfcqi.smells;
 
 import com.github.javaparser.Position;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.ConstructorDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
@@ -12,7 +14,11 @@ import com.integrallis.mfcqi.smells.internal.SourceTrees;
 import com.integrallis.mfcqi.smells.internal.SourceTrees.ParsedSource;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Production code-smell detector — Java analog of {@code
@@ -204,14 +210,49 @@ public final class JavaSmellDetector implements SmellDetector {
     return depth;
   }
 
+  /** java.lang types (implicitly imported, so not in the import table) treated as non-coupling. */
+  private static final Set<String> JAVA_LANG_BUILTINS =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  "String",
+                  "Object",
+                  "Integer",
+                  "Long",
+                  "Double",
+                  "Float",
+                  "Boolean",
+                  "Byte",
+                  "Short",
+                  "Character",
+                  "Number",
+                  "CharSequence",
+                  "Math",
+                  "System",
+                  "Thread",
+                  "Runnable",
+                  "Throwable",
+                  "Exception",
+                  "RuntimeException",
+                  "Error",
+                  "Iterable",
+                  "Comparable",
+                  "Class",
+                  "Void",
+                  "StringBuilder")));
+
   /**
-   * Coupling = number of distinct external type names referenced. Mirrors the rough "{@code
-   * _get_inheritance_coupling + _get_method_coupling}" intuition from the Python CBO; we keep the
-   * heuristic simple and source-only so it can run alongside the existing CBO metric without
-   * requiring symbol resolution.
+   * Coupling = number of distinct external type names referenced, EXCLUDING JDK/library types
+   * (java.lang built-ins plus anything imported from the {@code java}, {@code javax}, or {@code
+   * jakarta} namespaces). Without this exclusion the detector flags ordinary, well-factored Java
+   * classes as "high coupling" merely for naming JDK types (Path, Stream, List, IOException,
+   * Optional, …) in their signatures — which made this the single largest contributor to smell
+   * density on clean code.
    */
   private static int couplingOf(ClassOrInterfaceDeclaration cls) {
-    java.util.Set<String> coupled = new java.util.HashSet<>();
+    Set<String> jdk = new HashSet<>(JAVA_LANG_BUILTINS);
+    cls.findCompilationUnit().ifPresent(cu -> jdk.addAll(jdkImportedSimpleNames(cu)));
+    Set<String> coupled = new HashSet<>();
     for (ClassOrInterfaceType base : cls.getExtendedTypes()) {
       coupled.add(base.getNameAsString());
     }
@@ -241,7 +282,24 @@ public final class JavaSmellDetector implements SmellDetector {
       }
     }
     coupled.remove(cls.getNameAsString());
+    coupled.removeAll(jdk);
     return coupled.size();
+  }
+
+  /** Simple names imported from the JDK / Jakarta namespaces. */
+  private static Set<String> jdkImportedSimpleNames(CompilationUnit cu) {
+    Set<String> names = new HashSet<>();
+    for (ImportDeclaration imp : cu.getImports()) {
+      if (imp.isAsterisk()) {
+        continue;
+      }
+      String fqn = imp.getNameAsString();
+      if (fqn.startsWith("java.") || fqn.startsWith("javax.") || fqn.startsWith("jakarta.")) {
+        int dot = fqn.lastIndexOf('.');
+        names.add(dot < 0 ? fqn : fqn.substring(dot + 1));
+      }
+    }
+    return names;
   }
 
   private Smell longMethodSmell(String filePath, MethodDeclaration md, int lines) {

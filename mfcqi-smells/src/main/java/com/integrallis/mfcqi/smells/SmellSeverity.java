@@ -16,6 +16,12 @@ public enum SmellSeverity {
     this.defaultWeight = defaultWeight;
   }
 
+  /**
+   * Returns the default severity weight used when a {@link Smell} does not supply an explicit
+   * weight.
+   *
+   * @return the default weight (3.0/2.0/1.0 for HIGH/MEDIUM/LOW)
+   */
   public double defaultWeight() {
     return defaultWeight;
   }

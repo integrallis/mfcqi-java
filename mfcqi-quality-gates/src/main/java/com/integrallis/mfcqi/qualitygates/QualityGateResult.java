@@ -12,6 +12,14 @@ public final class QualityGateResult {
   private final boolean overallResult;
   private final List<MetricResult> metricResults;
 
+  /**
+   * Creates a result. The metric results are defensively copied into an unmodifiable list.
+   *
+   * @param passed whether every gate (overall and per-metric) passed
+   * @param overallResult whether the overall-gate portion passed independently of metric gates
+   * @param metricResults the per-metric evaluation outcomes
+   * @throws NullPointerException if {@code metricResults} is {@code null}
+   */
   public QualityGateResult(
       boolean passed, boolean overallResult, List<MetricResult> metricResults) {
     this.passed = passed;
@@ -21,14 +29,29 @@ public final class QualityGateResult {
             new ArrayList<>(Objects.requireNonNull(metricResults, "metricResults")));
   }
 
+  /**
+   * Returns whether all gates passed (the combined overall and per-metric outcome).
+   *
+   * @return {@code true} if every gate passed
+   */
   public boolean passed() {
     return passed;
   }
 
+  /**
+   * Returns whether the overall-gate portion passed, independently of individual metric gates.
+   *
+   * @return {@code true} if the overall gate passed
+   */
   public boolean overallResult() {
     return overallResult;
   }
 
+  /**
+   * Returns the per-metric evaluation outcomes.
+   *
+   * @return an unmodifiable list of metric results
+   */
   public List<MetricResult> metricResults() {
     return metricResults;
   }
@@ -68,6 +91,15 @@ public final class QualityGateResult {
     private final double actual;
     private final boolean passed;
 
+    /**
+     * Creates a per-metric result.
+     *
+     * @param metric the metric name
+     * @param threshold the minimum acceptable score for this metric
+     * @param actual the metric's actual score
+     * @param passed whether {@code actual} met or exceeded {@code threshold}
+     * @throws NullPointerException if {@code metric} is {@code null}
+     */
     public MetricResult(String metric, double threshold, double actual, boolean passed) {
       this.metric = Objects.requireNonNull(metric, "metric");
       this.threshold = threshold;
@@ -75,18 +107,38 @@ public final class QualityGateResult {
       this.passed = passed;
     }
 
+    /**
+     * Returns the metric name.
+     *
+     * @return the metric name
+     */
     public String metric() {
       return metric;
     }
 
+    /**
+     * Returns the minimum acceptable score for this metric.
+     *
+     * @return the configured threshold
+     */
     public double threshold() {
       return threshold;
     }
 
+    /**
+     * Returns the metric's actual score.
+     *
+     * @return the actual score
+     */
     public double actual() {
       return actual;
     }
 
+    /**
+     * Returns whether this metric met or exceeded its threshold.
+     *
+     * @return {@code true} if the metric gate passed
+     */
     public boolean passed() {
       return passed;
     }

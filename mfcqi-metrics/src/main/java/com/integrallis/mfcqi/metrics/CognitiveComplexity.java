@@ -31,10 +31,17 @@ public final class CognitiveComplexity extends Metric<CognitiveResult> {
 
   private final int hotspotThreshold;
 
+  /** Creates a metric using the {@link #DEFAULT_HOTSPOT_THRESHOLD default hotspot threshold}. */
   public CognitiveComplexity() {
     this(DEFAULT_HOTSPOT_THRESHOLD);
   }
 
+  /**
+   * Creates a metric with a custom hotspot threshold.
+   *
+   * @param hotspotThreshold the cognitive-complexity value at or above which a function is reported
+   *     as a hotspot
+   */
   public CognitiveComplexity(int hotspotThreshold) {
     this.hotspotThreshold = hotspotThreshold;
   }

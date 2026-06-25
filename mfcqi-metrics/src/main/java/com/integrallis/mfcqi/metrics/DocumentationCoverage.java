@@ -90,7 +90,13 @@ public final class DocumentationCoverage extends Metric<Double> {
       }
     }
     for (MethodDeclaration md : file.compilationUnit().findAll(MethodDeclaration.class)) {
-      if (md.isPublic()) {
+      // @Override methods are excluded from the documentable set: in idiomatic Java their contract
+      // documentation is inherited from the supertype/interface (which IS expected to be
+      // documented), so requiring a fresh Javadoc block on every override would penalise the
+      // standard "document the interface once, let overrides inherit" practice. The Python
+      // reference has no override marker and so never faces this case; this is the faithful Java
+      // analog of its public-method counting.
+      if (md.isPublic() && !md.isAnnotationPresent("Override")) {
         documentable += 1;
         if (hasJavadoc(md)) {
           documented += 1;

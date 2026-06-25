@@ -61,14 +61,29 @@ public final class SourceTrees {
       this.compilationUnit = compilationUnit;
     }
 
+    /**
+     * Returns the path of the parsed source file.
+     *
+     * @return the file path
+     */
     public Path path() {
       return path;
     }
 
+    /**
+     * Returns the raw UTF-8 source text of the file.
+     *
+     * @return the source text
+     */
     public String source() {
       return source;
     }
 
+    /**
+     * Returns the JavaParser {@link CompilationUnit} parsed from the source.
+     *
+     * @return the parsed compilation unit
+     */
     public CompilationUnit compilationUnit() {
       return compilationUnit;
     }

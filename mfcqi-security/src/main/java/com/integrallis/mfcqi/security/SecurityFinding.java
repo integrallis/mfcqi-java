@@ -38,34 +38,74 @@ public final class SecurityFinding {
     this.cweId = Objects.requireNonNull(cweId, "cweId");
   }
 
+  /**
+   * Returns the file in which the issue was found.
+   *
+   * @return the source file
+   */
   public Path file() {
     return file;
   }
 
+  /**
+   * Returns the 1-based line number where the issue was found.
+   *
+   * @return the line number
+   */
   public int lineNumber() {
     return lineNumber;
   }
 
+  /**
+   * Returns the Bandit-style check identifier that fired (e.g. {@code "B303"}).
+   *
+   * @return the test id
+   */
   public String testId() {
     return testId;
   }
 
+  /**
+   * Returns the Bandit-style check name (e.g. {@code "use_of_weak_hash"}).
+   *
+   * @return the test name
+   */
   public String testName() {
     return testName;
   }
 
+  /**
+   * Returns the severity bucket assigned to this issue.
+   *
+   * @return the severity
+   */
   public Severity severity() {
     return severity;
   }
 
+  /**
+   * Returns the confidence bucket assigned to this issue.
+   *
+   * @return the confidence
+   */
   public Confidence confidence() {
     return confidence;
   }
 
+  /**
+   * Returns the human-readable text describing the issue.
+   *
+   * @return the issue text
+   */
   public String issueText() {
     return issueText;
   }
 
+  /**
+   * Returns the associated CWE identifier (e.g. {@code "CWE-327"}).
+   *
+   * @return the CWE id
+   */
   public String cweId() {
     return cweId;
   }

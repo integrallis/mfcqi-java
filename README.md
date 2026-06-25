@@ -1,5 +1,6 @@
 # MFCQI for Java - Multi-Factor Code Quality Index
 
+[![MFCQI Score](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/integrallis/mfcqi-java/main/.github/badges/mfcqi.json)](https://github.com/integrallis/mfcqi-java)
 [![Java 11+](https://img.shields.io/badge/java-11+-blue.svg)](https://adoptium.net/)
 [![Gradle](https://img.shields.io/badge/Gradle-9.4.1-02303A.svg?logo=gradle)](https://gradle.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -24,20 +25,46 @@ Traditional code quality tools provide dozens of metrics without a unified quali
 
 ### Installation
 
+Requires a Java runtime (JRE/JDK 11 or newer).
+
+#### Option 1: Download a release (recommended)
+
+Grab the CLI distribution from the
+[latest release](https://github.com/integrallis/mfcqi-java/releases/latest) — no clone or Gradle
+required.
+
+```bash
+# Download mfcqi-<version>.zip (or .tar) from the GitHub release, then:
+unzip mfcqi-0.1.0.zip
+./mfcqi-0.1.0/bin/mfcqi analyze .
+
+# Optional: put it on your PATH so you can run `mfcqi` from anywhere
+export PATH="$PWD/mfcqi-0.1.0/bin:$PATH"
+```
+
+The archive is self-contained: a `bin/mfcqi` launcher (`bin/mfcqi.bat` on Windows) plus all
+dependency jars under `lib/`.
+
+#### Option 2: Build from source
+
 ```bash
 # Clone and build the multi-module project
-git clone https://github.com/bsbodden/mfcqi-java.git
+git clone https://github.com/integrallis/mfcqi-java.git
 cd mfcqi-java
 
 # Build everything (compile, test, SpotBugs, JaCoCo)
 ./gradlew build
 
-# Build only the CLI distribution
+# Build only the CLI distribution (installs into build/install/mfcqi)
 ./gradlew :mfcqi-cli:installDist
 
 # The launcher will be at:
-#   mfcqi-cli/build/install/mfcqi-cli/bin/mfcqi
+#   mfcqi-cli/build/install/mfcqi/bin/mfcqi
 ```
+
+> The CLI is distributed only via GitHub Releases / source build — it is **not** published to Maven
+> Central. The library modules (`mfcqi-core`, `mfcqi-metrics`, …) *are* on Maven Central for
+> programmatic use.
 
 You can also publish the modules to your local Maven repository to consume them as libraries from another Gradle/Maven project:
 
@@ -207,7 +234,7 @@ mfcqi models recommend
 - name: Check Code Quality
   run: |
     ./gradlew :mfcqi-cli:installDist
-    ./mfcqi-cli/build/install/mfcqi-cli/bin/mfcqi analyze src/main/java \
+    ./mfcqi-cli/build/install/mfcqi/bin/mfcqi analyze src/main/java \
       --min-score 0.7 \
       --format json \
       --output mfcqi-report.json
@@ -259,7 +286,7 @@ The Security metric evaluates code vulnerability density using industry-standard
 
 ```bash
 # Clone the repository
-git clone https://github.com/bsbodden/mfcqi-java.git
+git clone https://github.com/integrallis/mfcqi-java.git
 cd mfcqi-java
 
 # Set up local secrets used by the integration tests that exercise the
@@ -412,8 +439,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Links
 
-- [GitHub Repository](https://github.com/bsbodden/mfcqi-java)
-- [Issue Tracker](https://github.com/bsbodden/mfcqi-java/issues)
+- [GitHub Repository](https://github.com/integrallis/mfcqi-java)
+- [Issue Tracker](https://github.com/integrallis/mfcqi-java/issues)
 - [Sister project: mfcqi (Python)](https://github.com/bsbodden/mfcqi)
 
 ---

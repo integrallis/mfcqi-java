@@ -32,6 +32,12 @@ public final class AnalysisEngine {
   private final List<LLMProvider> providers;
   private final PebbleEngine pebble;
 
+  /**
+   * Creates an engine that dispatches to the first of {@code providers} whose {@link
+   * LLMProvider#handles(String)} matches the configured model.
+   *
+   * @param providers the ordered list of providers to try when routing a model
+   */
   public AnalysisEngine(List<LLMProvider> providers) {
     this.providers = new ArrayList<>(Objects.requireNonNull(providers, "providers"));
     ClasspathLoader loader = new ClasspathLoader();
@@ -44,7 +50,11 @@ public final class AnalysisEngine {
             .build();
   }
 
-  /** Default wiring: Anthropic + OpenAI + Ollama. */
+  /**
+   * Default wiring: Anthropic + OpenAI + Ollama.
+   *
+   * @return an engine with the three built-in providers registered
+   */
   public static AnalysisEngine withDefaults() {
     return new AnalysisEngine(
         java.util.Arrays.asList(

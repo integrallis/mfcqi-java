@@ -30,6 +30,14 @@ public final class QualityGateConfig {
   private final Map<String, Double> overallGates;
   private final Map<String, Double> metricGates;
 
+  /**
+   * Creates a configuration from the given gate thresholds. Both maps are defensively copied into
+   * unmodifiable {@link LinkedHashMap}s so insertion order is preserved.
+   *
+   * @param overallGates thresholds keyed by overall-gate name (e.g. {@code "mfcqi_score"})
+   * @param metricGates thresholds keyed by individual metric name
+   * @throws NullPointerException if either argument is {@code null}
+   */
   public QualityGateConfig(Map<String, Double> overallGates, Map<String, Double> metricGates) {
     this.overallGates =
         Collections.unmodifiableMap(
@@ -39,10 +47,20 @@ public final class QualityGateConfig {
             new LinkedHashMap<>(Objects.requireNonNull(metricGates, "metricGates")));
   }
 
+  /**
+   * Returns the overall-gate thresholds keyed by gate name (e.g. {@code "mfcqi_score"}).
+   *
+   * @return an unmodifiable, insertion-ordered map of overall gate thresholds
+   */
   public Map<String, Double> overallGates() {
     return overallGates;
   }
 
+  /**
+   * Returns the per-metric gate thresholds keyed by metric name.
+   *
+   * @return an unmodifiable, insertion-ordered map of metric gate thresholds
+   */
   public Map<String, Double> metricGates() {
     return metricGates;
   }

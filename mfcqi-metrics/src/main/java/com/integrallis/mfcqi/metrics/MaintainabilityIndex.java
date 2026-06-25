@@ -44,7 +44,9 @@ public final class MaintainabilityIndex extends Metric<Double> {
     double sum = 0.0;
     int counted = 0;
     for (ParsedFile file : files) {
-      double hv = HalsteadCounter.volume(file);
+      // radon's mi_compute expects a radon-scale Halstead volume; this counter runs ~5x higher,
+      // which would unfairly subtract ~5.2*ln(5)≈8.4 raw MI points. Rescale to radon's magnitude.
+      double hv = HalsteadCounter.radonScaledVolume(file);
       int cc = FileMetrics.totalCyclomaticComplexity(file);
       int sloc = FileMetrics.sourceLines(file.source());
       int commentLines = FileMetrics.commentLines(file);

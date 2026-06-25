@@ -5,9 +5,13 @@ package com.integrallis.mfcqi.badge;
  * in {@code mfcqi/cli/commands/badge.py:badge}.
  */
 public enum BadgeRating {
+  /** Score &gt;= 0.80 — brightgreen badge. */
   EXCELLENT("brightgreen", "excellent"),
+  /** Score in [0.60, 0.80) — green badge. */
   GOOD("green", "good"),
+  /** Score in [0.40, 0.60) — yellow badge. */
   FAIR("yellow", "fair"),
+  /** Score &lt; 0.40 — red badge. */
   POOR("red", "poor");
 
   private final String color;
@@ -18,10 +22,20 @@ public enum BadgeRating {
     this.label = label;
   }
 
+  /**
+   * Returns the shields.io color name for this rating.
+   *
+   * @return the badge color (e.g. {@code "brightgreen"})
+   */
   public String color() {
     return color;
   }
 
+  /**
+   * Returns the human-readable label for this rating.
+   *
+   * @return the rating label (e.g. {@code "excellent"})
+   */
   public String label() {
     return label;
   }

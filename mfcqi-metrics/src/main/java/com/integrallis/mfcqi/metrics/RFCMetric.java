@@ -1,5 +1,6 @@
 package com.integrallis.mfcqi.metrics;
 
+import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.MethodCallExpr;
@@ -9,6 +10,7 @@ import com.integrallis.mfcqi.metrics.internal.ParsedSources;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -49,7 +51,22 @@ public final class RFCMetric extends Metric<Double> {
     return (double) max;
   }
 
-  /** RFC = local method count + count of distinct remote method names invoked by the class. */
+  /**
+   * RFC = local method count + count of distinct remote method names invoked by the class.
+   *
+   * <p>Two details mirror the Python reference's {@code RFCVisitor} exactly (without them the Java
+   * raw value runs systematically higher than Python's, deflating the normalized score):
+   *
+   * <ul>
+   *   <li><b>Scoped calls only.</b> Python's {@code visit_Call} guards on {@code hasattr(node.func,
+   *       "attr")}, i.e. it counts {@code obj.method()} but NOT bare {@code method()}/{@code
+   *       helper()} calls. The Java analog keeps only calls with a scope.
+   *   <li><b>No nested-type calls.</b> Python resets its call set on entering each {@code
+   *       ClassDef}, so a class does not absorb calls made inside a nested type. JavaParser's
+   *       {@code findAll} recurses, so we drop calls whose nearest enclosing type is not this
+   *       class.
+   * </ul>
+   */
   private static int rfcForClass(ClassOrInterfaceDeclaration cls) {
     Set<String> localMethods = new HashSet<>();
     for (MethodDeclaration md : cls.getMethods()) {
@@ -57,9 +74,26 @@ public final class RFCMetric extends Metric<Double> {
     }
     Set<String> remoteCalls = new HashSet<>();
     for (MethodCallExpr call : cls.findAll(MethodCallExpr.class)) {
+      if (!call.getScope().isPresent()) {
+        continue; // bare call (e.g. helper()) — Python's attr guard excludes these
+      }
+      if (!enclosingTypeIs(call, cls)) {
+        continue; // call lives inside a nested type — Python attributes it to that type
+      }
       remoteCalls.add(call.getNameAsString());
     }
     return localMethods.size() + remoteCalls.size();
+  }
+
+  /** True if the nearest enclosing class/interface declaration of {@code node} is {@code cls}. */
+  private static boolean enclosingTypeIs(Node node, ClassOrInterfaceDeclaration cls) {
+    for (Optional<Node> p = node.getParentNode(); p.isPresent(); p = p.get().getParentNode()) {
+      Node ancestor = p.get();
+      if (ancestor instanceof ClassOrInterfaceDeclaration) {
+        return ancestor == cls;
+      }
+    }
+    return false;
   }
 
   @Override

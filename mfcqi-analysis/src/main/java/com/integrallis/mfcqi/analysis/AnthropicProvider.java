@@ -18,10 +18,16 @@ public final class AnthropicProvider implements LLMProvider {
 
   private final String endpoint;
 
+  /** Creates a provider targeting the public Anthropic Messages API endpoint. */
   public AnthropicProvider() {
     this(DEFAULT_ENDPOINT);
   }
 
+  /**
+   * Creates a provider targeting a custom endpoint (useful for proxies or tests).
+   *
+   * @param endpoint the Messages API URL to POST to
+   */
   public AnthropicProvider(String endpoint) {
     this.endpoint = endpoint;
   }

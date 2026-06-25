@@ -16,10 +16,16 @@ public final class OpenAIProvider implements LLMProvider {
 
   private final String endpoint;
 
+  /** Creates a provider targeting the public OpenAI Chat Completions endpoint. */
   public OpenAIProvider() {
     this(DEFAULT_ENDPOINT);
   }
 
+  /**
+   * Creates a provider targeting a custom endpoint (useful for proxies or tests).
+   *
+   * @param endpoint the Chat Completions API URL to POST to
+   */
   public OpenAIProvider(String endpoint) {
     this.endpoint = endpoint;
   }

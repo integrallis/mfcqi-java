@@ -182,4 +182,152 @@ class ModelsCommandTest {
     assertThat(RecommendSubcommand.installedModels("http://127.0.0.1:1"))
         .isEqualTo(Collections.emptyList());
   }
+
+  @Test
+  void modelsWithoutSubcommand_printsUsageHint() {
+    int code = new CommandLine(new Main()).execute("models");
+    assertThat(code).isZero();
+    String out = stdout.toString(StandardCharsets.UTF_8);
+    assertThat(out).contains("Ollama model management").contains("mfcqi models list");
+  }
+
+  @Test
+  void printModels_returnsTwoOnUnparseableBody() {
+    int code = ListSubcommand.printModels("not-json");
+    assertThat(code).isEqualTo(2);
+    assertThat(stderr.toString(StandardCharsets.UTF_8)).contains("Failed to parse");
+  }
+
+  @Test
+  void cli_listReturnsTwoOnConnectionFailure() {
+    int code =
+        new CommandLine(new Main())
+            .execute("models", "list", "--ollama-endpoint", "http://127.0.0.1:1");
+    assertThat(code).isEqualTo(2);
+    assertThat(stderr.toString(StandardCharsets.UTF_8)).contains("Failed to reach Ollama");
+  }
+
+  @Test
+  void cli_listReturnsTwoOnNon2xxStatus() throws Exception {
+    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext(
+        "/api/tags",
+        exchange -> {
+          exchange.sendResponseHeaders(500, -1);
+          exchange.close();
+        });
+    server.start();
+    try {
+      String endpoint = "http://127.0.0.1:" + server.getAddress().getPort();
+      int code =
+          new CommandLine(new Main()).execute("models", "list", "--ollama-endpoint", endpoint);
+      assertThat(code).isEqualTo(2);
+      assertThat(stderr.toString(StandardCharsets.UTF_8)).contains("HTTP 500");
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void cli_pullReturnsTwoOnConnectionFailure() {
+    int code =
+        new CommandLine(new Main())
+            .execute("models", "pull", "codellama:7b", "--ollama-endpoint", "http://127.0.0.1:1");
+    assertThat(code).isEqualTo(2);
+    assertThat(stderr.toString(StandardCharsets.UTF_8)).contains("Failed to reach Ollama");
+  }
+
+  @Test
+  void cli_pullReturnsTwoOnNon2xxStatus() throws Exception {
+    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext(
+        "/api/pull",
+        exchange -> {
+          exchange.sendResponseHeaders(404, -1);
+          exchange.close();
+        });
+    server.start();
+    try {
+      String endpoint = "http://127.0.0.1:" + server.getAddress().getPort();
+      int code =
+          new CommandLine(new Main())
+              .execute("models", "pull", "codellama:7b", "--ollama-endpoint", endpoint);
+      assertThat(code).isEqualTo(2);
+      assertThat(stderr.toString(StandardCharsets.UTF_8)).contains("HTTP 404");
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void cli_pullStreamsStatusAgainstStubServer() throws Exception {
+    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext(
+        "/api/pull",
+        exchange -> {
+          byte[] body =
+              ("{\"status\":\"pulling manifest\"}\n"
+                      + "{\"status\":\"downloading\",\"completed\":1048576,\"total\":2097152}\n"
+                      + "{\"status\":\"success\"}\n")
+                  .getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, body.length);
+          try (OutputStream os = exchange.getResponseBody()) {
+            os.write(body);
+          }
+        });
+    server.start();
+    try {
+      String endpoint = "http://127.0.0.1:" + server.getAddress().getPort();
+      int code =
+          new CommandLine(new Main())
+              .execute("models", "pull", "codellama:7b", "--ollama-endpoint", endpoint);
+      assertThat(code).isZero();
+      assertThat(stdout.toString(StandardCharsets.UTF_8))
+          .contains("pulling manifest")
+          .contains("success");
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void streamPullStatus_printsProgressForRepeatedStatus() {
+    String body =
+        "{\"status\":\"downloading\",\"completed\":1048576,\"total\":2097152}\n"
+            + "{\"status\":\"downloading\",\"completed\":2097152,\"total\":2097152}\n";
+    int code =
+        PullSubcommand.streamPullStatus(
+            new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)));
+    assertThat(code).isZero();
+    String out = stdout.toString(StandardCharsets.UTF_8);
+    assertThat(out).contains("downloading").contains("MB").contains("%");
+  }
+
+  @Test
+  void cli_recommendListsInstalledModels() throws Exception {
+    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext(
+        "/api/tags",
+        exchange -> {
+          byte[] body =
+              ("{\"models\":[{\"name\":\"codellama:7b\",\"size\":1048576}]}")
+                  .getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, body.length);
+          try (OutputStream os = exchange.getResponseBody()) {
+            os.write(body);
+          }
+        });
+    server.start();
+    try {
+      String endpoint = "http://127.0.0.1:" + server.getAddress().getPort();
+      int code =
+          new CommandLine(new Main()).execute("models", "recommend", "--ollama-endpoint", endpoint);
+      assertThat(code).isZero();
+      assertThat(stdout.toString(StandardCharsets.UTF_8))
+          .contains("Your Available Models")
+          .contains("PRIMARY");
+    } finally {
+      server.stop(0);
+    }
+  }
 }

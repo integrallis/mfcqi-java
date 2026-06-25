@@ -35,11 +35,22 @@ public final class MFCQICalculator {
     this.metrics = Collections.unmodifiableMap(new LinkedHashMap<>(b.metrics));
   }
 
+  /**
+   * Creates a new builder for assembling a calculator from a set of metrics.
+   *
+   * @return a fresh {@link Builder}
+   */
   public static Builder builder() {
     return new Builder();
   }
 
-  /** Calculate the MFCQI score for {@code codebase}. */
+  /**
+   * Calculate the MFCQI score for {@code codebase}.
+   *
+   * @param codebase the directory (or single file) to analyze
+   * @return the aggregated score in {@code [0.0, 1.0]}; {@code 0.0} if the codebase is {@code
+   *     null}, has no analyzable Java source, or no metrics are registered
+   */
   public double calculate(Path codebase) {
     if (codebase == null || hasNoAnalyzableSource(codebase)) {
       // Mirrors mfcqi/calculator.py:115 — empty codebases get 0.0, not a partial score from
@@ -130,12 +141,25 @@ public final class MFCQICalculator {
 
     private Builder() {}
 
+    /**
+     * Registers a metric, keyed by its {@link Metric#getName()}. Re-adding a metric with the same
+     * name replaces the previous one.
+     *
+     * @param metric the metric to add (must not be {@code null})
+     * @return this builder, for chaining
+     * @throws NullPointerException if {@code metric} is {@code null}
+     */
     public Builder addMetric(Metric<?> metric) {
       Objects.requireNonNull(metric, "metric");
       metrics.put(metric.getName(), metric);
       return this;
     }
 
+    /**
+     * Builds an immutable calculator from the registered metrics.
+     *
+     * @return a new {@link MFCQICalculator}
+     */
     public MFCQICalculator build() {
       return new MFCQICalculator(this);
     }

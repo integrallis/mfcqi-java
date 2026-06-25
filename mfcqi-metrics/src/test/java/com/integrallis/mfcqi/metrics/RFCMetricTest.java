@@ -45,9 +45,10 @@ class RFCMetricTest {
             + "}";
     Files.writeString(src.resolve("A.java"), code);
     // Local methods: {one, two, helper} = 3
-    // Remote calls (distinct names): {helper, println} = 2
-    // RFC = 5
-    assertThat(metric.extract(tmp)).isCloseTo(5.0, within(1e-9));
+    // Remote calls (distinct, SCOPED names only — matches Python's obj.method() guard):
+    //   {println} = 1  (System.out.println() is scoped; the bare helper() call is excluded)
+    // RFC = 4
+    assertThat(metric.extract(tmp)).isCloseTo(4.0, within(1e-9));
   }
 
   @Test
@@ -67,8 +68,9 @@ class RFCMetricTest {
     big.append("}");
     Files.writeString(src.resolve("Big.java"), big.toString());
 
-    // Big: local = 8, remote distinct = {println, h0..h7} = 9 -> RFC = 17
+    // Big: local = 8, remote distinct (scoped only) = {println} = 1 -> RFC = 9
+    //   (the bare h0()..h7() calls are excluded, matching Python's obj.method() guard)
     // Tiny: local = 1, remote = 0 -> RFC = 1
-    assertThat(metric.extract(tmp)).isCloseTo(17.0, within(1e-9));
+    assertThat(metric.extract(tmp)).isCloseTo(9.0, within(1e-9));
   }
 }

@@ -59,24 +59,32 @@ class SecretsExposureMetricTest {
 
   @Test
   void extract_skipsTestAndExampleFiles(@TempDir Path tmp) throws Exception {
-    // Python skip patterns: test_, example., .example, fixture, /tests/
+    // Skip patterns: Python (test_, example., .example, fixture, /tests/) PLUS the JVM additions
+    // (/test/, /src/test/, *Test.java, *Tests.java, *IT.java). A fake AWS key in a real production
+    // file must be counted; the same key in test/example files must be skipped.
+    Path mainDir = Files.createDirectories(tmp.resolve("src/main/java"));
+    Files.writeString(
+        mainDir.resolve("Prod.java"),
+        "public class Prod { String key = \"AKIAIOSFODNN7EXAMPLE\"; }");
+
+    // Maven/Gradle test source root + *Test.java suffix -> skipped (the old port missed this).
     Path testDir = Files.createDirectories(tmp.resolve("src/test/java"));
     Files.writeString(
-        testDir.resolve("FooTest.java"), // Python's "test_" substring matches "Test" too
+        testDir.resolve("FooTest.java"),
         "public class FooTest {\n" + "  String key = \"AKIAIOSFODNN7EXAMPLE\";\n" + "}");
+    // Python /tests/ convention -> skipped.
     Path testsDir = Files.createDirectories(tmp.resolve("src/tests"));
     Files.writeString(
         testsDir.resolve("Helper.java"),
         "public class Helper { String key = \"AKIAIOSFODNN7EXAMPLE\"; }");
+    // example. substring -> skipped.
     Path exampleFile = Files.createDirectories(tmp.resolve("src")).resolve("Config.example.java");
     Files.writeString(
         exampleFile, "public class Config { String key = \"AKIAIOSFODNN7EXAMPLE\"; }");
 
-    // FooTest.java does NOT match Python's lower-case "test_" substring (Python source uses
-    // case-sensitive "in" check). Let's verify the skip pattern matches /tests/ and example.
     long count = metric.extract(tmp).longValue();
-    // Helper.java is in /tests/ -> skipped. Config.example.java contains "example." -> skipped.
-    // FooTest.java is NOT skipped (no test_ lowercase prefix).
+    // Only the production file (src/main/java/Prod.java) is counted; the three test/example files
+    // are all skipped.
     assertThat(count).isEqualTo(1L);
   }
 

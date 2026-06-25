@@ -27,16 +27,17 @@ class HalsteadVolumeTest {
   }
 
   @Test
-  void normalize_atOrAboveFiveThousandReturnsZero() {
-    assertThat(metric.normalize(5000.0)).isEqualTo(0.0);
-    assertThat(metric.normalize(8000.0)).isEqualTo(0.0);
+  void normalize_atOrAboveUpperCutoffReturnsZero() {
+    // Java cutoff is 25000 (= Python's 5000 scaled by the ~5x token-model factor).
+    assertThat(metric.normalize(25000.0)).isEqualTo(0.0);
+    assertThat(metric.normalize(40000.0)).isEqualTo(0.0);
   }
 
   @Test
   void normalize_appliesTanhInBetween() {
-    // Python: 1 - tanh(V/2500). Spot-check V=2500 → 1 - tanh(1.0) ≈ 0.2384.
-    assertThat(metric.normalize(2500.0)).isCloseTo(1.0 - Math.tanh(1.0), within(1e-9));
-    assertThat(metric.normalize(500.0)).isCloseTo(1.0 - Math.tanh(0.2), within(1e-9));
+    // Java-recalibrated: 1 - tanh(V/12500). Spot-check V=12500 → 1 - tanh(1.0) ≈ 0.2384.
+    assertThat(metric.normalize(12500.0)).isCloseTo(1.0 - Math.tanh(1.0), within(1e-9));
+    assertThat(metric.normalize(2500.0)).isCloseTo(1.0 - Math.tanh(0.2), within(1e-9));
   }
 
   @Test

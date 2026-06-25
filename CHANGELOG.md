@@ -1,0 +1,41 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.1.0] - 2026-06-24
+
+First public release of the MFCQI Java edition.
+
+### Added
+- `MFCQICalculator` producing a single 0.0–1.0 quality score via a geometric mean of
+  evidence-based metrics (`mfcqi-core`).
+- Complexity and OO metrics — cyclomatic, cognitive, Halstead, maintainability,
+  documentation, RFC, DIT, MHF, CBO, LCOM (`mfcqi-metrics`).
+- Hash-based duplication detection (`mfcqi-duplication`).
+- Secret detection via curated regex catalog + Shannon-entropy scanning (`mfcqi-secrets`).
+- Architectural, design, implementation, and test smell detectors built on JavaParser
+  (`mfcqi-smells`).
+- Source-level security analysis (`mfcqi-security`).
+- Dependency CVE scanning via OSV.dev with an offline fallback (`mfcqi-deps-security`).
+- Optional LLM analysis engine for recommendations — Anthropic / OpenAI / Ollama
+  (`mfcqi-analysis`).
+- YAML-driven quality gate evaluator (`mfcqi-quality-gates`).
+- shields.io badge generation (`mfcqi-badge`).
+- Picocli CLI with `analyze`, `badge`, `config`, `models`, and `quality-gate` commands,
+  shipped as a runnable distribution (`mfcqi-cli`).
+- Self-score badge (`.github/badges/mfcqi.json`) and badge-refresh workflow.
+
+### Fixed
+- `mfcqi analyze .` returned 0.0 because the leading `.` of a relative path was treated as a
+  hidden directory in source discovery; current-dir/parent-dir tokens are now ignored.
+- Metric fairness for Java (parity with the Python reference): Halstead operator/operand
+  classification corrected and the volume normalization recalibrated for Java's token model;
+  Maintainability Index fed a radon-scale volume; RFC counts only scoped, same-class calls; CBO
+  and the high-coupling smell exclude JDK/library types; the secrets scanner no longer self-matches
+  its own alphabet constants and now skips Java test sources; documentation coverage excludes
+  `@Override` methods (their contract is inherited). The library's self-score is 0.89.
+
+[0.1.0]: https://github.com/integrallis/mfcqi-java/releases/tag/v0.1.0

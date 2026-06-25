@@ -83,8 +83,11 @@ public final class AnalyzeCommand implements Callable<Integer> {
    * Click's UsageError.
    */
   public enum ProviderName {
+    /** Anthropic Claude models. */
     anthropic,
+    /** OpenAI GPT models. */
     openai,
+    /** Locally-hosted Ollama models. */
     ollama
   }
 

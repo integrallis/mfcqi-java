@@ -17,8 +17,28 @@ import java.util.Objects;
  */
 public final class SecretsExposureMetric extends Metric<Double> {
 
-  /** Substrings whose presence in a file path causes the file to be skipped (Python verbatim). */
-  static final String[] SKIP_SUBSTRINGS = {"test_", "example.", ".example", "fixture", "/tests/"};
+  /**
+   * Substrings whose presence in a file path causes the file to be skipped. The first group is the
+   * Python reference set verbatim ({@code test_}, {@code /tests/}, …); those are pytest/Python
+   * conventions that never match a Maven/Gradle layout, so the second group adds the JVM
+   * equivalents ({@code /test/} source roots and {@code *Test.java}/{@code *Tests.java}/{@code
+   * *IT.java} suffixes). Without these, the Python intent of "don't flag fake keys in test
+   * fixtures" was effectively dead for Java projects.
+   */
+  static final String[] SKIP_SUBSTRINGS = {
+    // Python reference (pytest/Python conventions):
+    "test_",
+    "example.",
+    ".example",
+    "fixture",
+    "/tests/",
+    // JVM/Maven/Gradle equivalents:
+    "/test/",
+    "/src/test/",
+    "Test.java",
+    "Tests.java",
+    "IT.java"
+  };
 
   private final SecretScanner scanner;
 
