@@ -24,11 +24,15 @@ project:
   inceptionYear: "2025"
   links:
     homepage: https://github.com/integrallis/mfcqi-java
+  java:
+    groupId: com.integrallis
+    version: "11"
 
 # Artifacts uploaded to Maven Central must be GPG-signed.
 signing:
   active: ALWAYS
-  armored: true
+  pgp:
+    armored: true
 
 deploy:
   maven:
@@ -36,6 +40,7 @@ deploy:
       sonatype:
         active: RELEASE
         url: https://central.sonatype.com/api/v1/publisher
+        namespace: com.integrallis
         # JReleaser validates POM completeness (name/description/url/license/
         # developers/scm) and the presence of -sources/-javadoc jars.
         applyMavenCentralRules: true
