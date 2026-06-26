@@ -34,12 +34,12 @@ Grab the CLI distribution from the
 required.
 
 ```bash
-# Download mfcqi-<version>.zip (or .tar) from the GitHub release, then:
-unzip mfcqi-0.1.0.zip
-./mfcqi-0.1.0/bin/mfcqi analyze .
+# Download mfcqi-<version>.zip (or .tar) from the GitHub release, then (e.g. 0.2.0):
+unzip mfcqi-0.2.0.zip
+./mfcqi-0.2.0/bin/mfcqi analyze .
 
 # Optional: put it on your PATH so you can run `mfcqi` from anywhere
-export PATH="$PWD/mfcqi-0.1.0/bin:$PATH"
+export PATH="$PWD/mfcqi-0.2.0/bin:$PATH"
 ```
 
 The archive is self-contained: a `bin/mfcqi` launcher (`bin/mfcqi.bat` on Windows) plus all
@@ -84,13 +84,16 @@ mfcqi analyze src/main/java
 # Analyze a single file
 mfcqi analyze src/main/java/com/example/Service.java
 
-# Analyze with AI recommendations (uses your API keys)
+# Analyze with AI recommendations from a cloud model (reads ANTHROPIC_API_KEY / OPENAI_API_KEY)
 mfcqi analyze . --model claude-sonnet-4-5
 
-# Use a local Ollama model
-mfcqi analyze . --provider ollama --model codellama:7b
+# Use a local Ollama model — no API key required
+mfcqi analyze . --provider ollama --model qwen2.5-coder:7b
 
-# Generate more recommendations (default is 10)
+# Raise the LLM request timeout for slow local models (default 60s)
+mfcqi analyze . --provider ollama --model qwen2.5-coder:7b --timeout 300
+
+# Change how many recommendations to request (default 50)
 mfcqi analyze . --model claude-sonnet-4-5 --recommendations 15
 
 # Output JSON for CI/CD integration
@@ -175,14 +178,18 @@ MFCQI reads provider credentials from the standard environment variables — the
 ```bash
 export ANTHROPIC_API_KEY=...   # for claude-* models
 export OPENAI_API_KEY=...      # for gpt-* models
-# Ollama runs locally and needs no key; override the endpoint with OLLAMA_HOST
-# or with --ollama-endpoint per invocation.
+# Ollama runs locally and needs no key; point at a non-default daemon with the
+# --ollama-endpoint option per invocation.
 ```
 
 Get your API keys from:
 
 - OpenAI: <https://platform.openai.com/api-keys>
 - Anthropic: <https://console.anthropic.com/settings/keys>
+
+The LLM request timeout defaults to 60 seconds. Local models often need longer (they may load several
+GB on the first call), so raise it with `--timeout <seconds>` or the `MFCQI_TIMEOUT` environment
+variable if you see a timeout error.
 
 ### Selecting a provider and model
 
@@ -207,12 +214,12 @@ mfcqi models recommend
 
 ## Features
 
-### Formatted Terminal Output
+### Terminal Output
 
-- ANSI-colored summary blocks
-- Progress indicators
-- Clear metrics breakdown
-- Prioritized recommendations
+- Plain, readable score and metric breakdown
+- A progress spinner while the LLM call runs (on an interactive terminal), so the CLI isn't silent
+  while a local model loads and generates
+- Prioritized, severity-tagged recommendations
 
 ### Multiple Output Formats
 
@@ -320,41 +327,38 @@ Based on the metrics used, typical MFCQI scores for different code quality level
 | Fair          | 0.40 - 0.59 | Higher complexity, sparse documentation, limited testing     |
 | Poor          | 0.00 - 0.39 | Very complex, poorly documented, untested code               |
 
-Example CLI usage:
+Example CLI usage (actual terminal output):
 
 ```text
-➜ mfcqi analyze src/main/java --provider ollama --model codellama:7b
-✅ Metrics calculated (MFCQI Score: 0.85) in 3.0s
-✅ AI recommendations generated
-╭───────────────────────── ✨ MFCQI Analysis Results ──────────────────────────╮
-│                                                                              │
-│  ⭐ MFCQI Score: 0.854                                                       │
-│                                                                              │
-│  📊 Metrics Breakdown:                                                       │
-│   Metric                      Score     Rating                               │
-│   Cyclomatic Complexity        0.74    ✅ Good                               │
-│   Cognitive Complexity         0.91  ⭐ Excellent                            │
-│   Halstead Volume              0.69    ✅ Good                               │
-│   Maintainability Index        0.63    ✅ Good                               │
-│   Code Duplication             0.97  ⭐ Excellent                            │
-│   Documentation Coverage       0.97  ⭐ Excellent                            │
-│   Security Score               0.80  ⭐ Excellent                            │
-│   RFC (Response for Class)     1.00  ⭐ Excellent                            │
-│   DIT (Depth of Inheritance)   1.00  ⭐ Excellent                            │
-│   MHF (Method Hiding Factor)   0.93  ⭐ Excellent                            │
-│                                                                              │
-│  🤖 AI Recommendations (ollama:codellama:7b):                                │
-│    1. 🟡 Replace concatenated SQL with PreparedStatement parameter binding   │
-│  to eliminate the SQL injection vector flagged in OrderRepository.           │
-│    2. 🟢 Extract the duplicated request-validation block in                  │
-│  AccountController and OrderController into a shared validator.              │
-│    3. 🟡 Tighten visibility on the helper methods in PaymentService          │
-│  (currently package-private; only used internally).                          │
-│                                                                              │
-│  ⚡ Local processing: 12.3s                                                  │
-│                                                                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
+➜ mfcqi analyze src/main/java --provider ollama --model qwen2.5-coder:7b
+MFCQI analysis: src/main/java
+Score: 0.522
+
+Metric breakdown:
+  Cyclomatic Complexity          0.868
+  Cognitive Complexity           0.913
+  Halstead Volume                0.909
+  Maintainability Index          0.714
+  Code Duplication               0.871
+  Documentation Coverage         0.000
+  security                       0.309
+  Dependency Security            1.000
+  Secrets Exposure               0.000
+  Code Smell Density             0.910
+  rfc                            0.914
+  dit                            1.000
+  mhf                            0.000
+  Coupling Between Objects       0.850
+  Lack of Cohesion of Methods    0.600
+
+Recommendations:
+  1. [CRITICAL] Fix Documentation Coverage in PaymentService.java:21: zero Javadoc on public API.
+  2. [CRITICAL] Fix Secrets Exposure in PaymentService.java:21: hardcoded credentials present.
+  3. [HIGH] Fix Use of Weak Hash Function in PaymentService.java:21: MD5 is collision-vulnerable.
 ```
+
+Other output formats (`--format json|html|markdown|sarif`) render the same data for dashboards,
+documentation, or ingestion by GitHub Code Scanning.
 
 ## Research Foundation
 

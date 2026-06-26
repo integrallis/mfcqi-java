@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - 2026-06-26
 
 ### Added
 - `analyze --timeout <seconds>` and the `MFCQI_TIMEOUT` / `CQI_LLM_TIMEOUT` env vars to raise the
@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `analyze --provider ollama --model <name>` no longer demands an API key: a bare model name is now
   routed to Ollama (the `ollama:` prefix is applied automatically) instead of a key-based provider.
+- The version is now single-sourced from `gradle.properties` (a generated resource read via
+  `Version.current()`); `--version` and the SARIF report no longer carry stale `0.1.0-SNAPSHOT`
+  literals, and the SARIF repository URLs point at `integrallis/mfcqi-java`.
+
+### Changed
+- README corrected for accuracy: real terminal output sample, `--recommendations` default is 50
+  (not 10), removed the unsupported `OLLAMA_HOST` note, documented `--timeout`.
 
 ## [0.1.0] - 2026-06-24
 
@@ -50,4 +57,5 @@ First public release of the MFCQI Java edition.
   its own alphabet constants and now skips Java test sources; documentation coverage excludes
   `@Override` methods (their contract is inherited). The library's self-score is 0.89.
 
+[0.2.0]: https://github.com/integrallis/mfcqi-java/releases/tag/v0.2.0
 [0.1.0]: https://github.com/integrallis/mfcqi-java/releases/tag/v0.1.0
