@@ -33,6 +33,27 @@ class AnalyzeCommandTest {
     System.setErr(new PrintStream(stderr, true, StandardCharsets.UTF_8));
   }
 
+  @Test
+  void normalizeModel_prefixesOllamaModelsWhenProviderForced() {
+    // --provider ollama with a bare model must gain the ollama: prefix so it routes locally
+    // (and validation does not demand an API key).
+    assertThat(AnalyzeCommand.normalizeModel("qwen3-coder", AnalyzeCommand.ProviderName.ollama))
+        .isEqualTo("ollama:qwen3-coder");
+    // Already-prefixed forms (ollama: or ollama/) are left untouched.
+    assertThat(AnalyzeCommand.normalizeModel("ollama:llama3", AnalyzeCommand.ProviderName.ollama))
+        .isEqualTo("ollama:llama3");
+    assertThat(AnalyzeCommand.normalizeModel("ollama/mistral", AnalyzeCommand.ProviderName.ollama))
+        .isEqualTo("ollama/mistral");
+  }
+
+  @Test
+  void normalizeModel_leavesNonOllamaModelsUnchanged() {
+    assertThat(AnalyzeCommand.normalizeModel("gpt-4o", AnalyzeCommand.ProviderName.openai))
+        .isEqualTo("gpt-4o");
+    assertThat(AnalyzeCommand.normalizeModel("claude-sonnet-4-5", null))
+        .isEqualTo("claude-sonnet-4-5");
+  }
+
   @AfterEach
   void restoreStreams() {
     System.setOut(originalOut);

@@ -76,6 +76,33 @@ class AnalysisConfigTest {
   }
 
   @Test
+  void fromEnvironment_honoursMfcqiTimeoutOverride() {
+    Map<String, String> env = new HashMap<>();
+    env.put("MFCQI_TIMEOUT", "300");
+    assertThat(AnalysisConfig.fromEnvironment(env::get).timeoutSeconds()).isEqualTo(300);
+  }
+
+  @Test
+  void fromEnvironment_honoursCqiLlmTimeoutOverride() {
+    Map<String, String> env = new HashMap<>();
+    env.put("CQI_LLM_TIMEOUT", "120");
+    assertThat(AnalysisConfig.fromEnvironment(env::get).timeoutSeconds()).isEqualTo(120);
+  }
+
+  @Test
+  void fromEnvironment_keepsDefaultTimeoutWhenOverrideMissingOrInvalid() {
+    Map<String, String> env = new HashMap<>();
+    assertThat(AnalysisConfig.fromEnvironment(env::get).timeoutSeconds())
+        .isEqualTo(AnalysisConfig.DEFAULT_TIMEOUT_SECONDS);
+    env.put("MFCQI_TIMEOUT", "not-a-number");
+    assertThat(AnalysisConfig.fromEnvironment(env::get).timeoutSeconds())
+        .isEqualTo(AnalysisConfig.DEFAULT_TIMEOUT_SECONDS);
+    env.put("MFCQI_TIMEOUT", "-5");
+    assertThat(AnalysisConfig.fromEnvironment(env::get).timeoutSeconds())
+        .isEqualTo(AnalysisConfig.DEFAULT_TIMEOUT_SECONDS);
+  }
+
+  @Test
   void fromEnvironmentAndDotenv_picksUpKeysFromDotenvFile(
       @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
     java.nio.file.Files.writeString(

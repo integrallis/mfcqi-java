@@ -204,6 +204,22 @@ public final class AnalysisConfig {
     if (openai != null && !openai.isEmpty()) {
       b.openaiApiKey(openai);
     }
+    // Optional request-timeout override (seconds). Useful for slow local models. CQI_LLM_TIMEOUT
+    // is the CQI_-prefixed analog of CQI_LLM_MODEL; MFCQI_TIMEOUT is accepted as a convenience.
+    String timeout = env.apply("MFCQI_TIMEOUT");
+    if (timeout == null || timeout.isEmpty()) {
+      timeout = env.apply("CQI_LLM_TIMEOUT");
+    }
+    if (timeout != null && !timeout.isEmpty()) {
+      try {
+        int seconds = Integer.parseInt(timeout.trim());
+        if (seconds > 0) {
+          b.timeoutSeconds(seconds);
+        }
+      } catch (NumberFormatException ignored) {
+        // Ignore a malformed value and keep the default timeout.
+      }
+    }
     return b.build();
   }
 

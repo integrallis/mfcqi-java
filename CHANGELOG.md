@@ -5,6 +5,18 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `analyze --timeout <seconds>` and the `MFCQI_TIMEOUT` / `CQI_LLM_TIMEOUT` env vars to raise the
+  LLM request timeout (the 60s default is often too short for local Ollama models).
+- A progress spinner while the LLM call runs (animated on a TTY, a single static line when piped),
+  so the CLI no longer sits silently while a local model loads/generates.
+
+### Fixed
+- `analyze --provider ollama --model <name>` no longer demands an API key: a bare model name is now
+  routed to Ollama (the `ollama:` prefix is applied automatically) instead of a key-based provider.
+
 ## [0.1.0] - 2026-06-24
 
 First public release of the MFCQI Java edition.

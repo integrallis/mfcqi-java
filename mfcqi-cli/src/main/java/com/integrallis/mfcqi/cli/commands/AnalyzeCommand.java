@@ -11,6 +11,7 @@ import com.integrallis.mfcqi.analysis.OllamaProvider;
 import com.integrallis.mfcqi.analysis.OpenAIProvider;
 import com.integrallis.mfcqi.analysis.ToolOutputs;
 import com.integrallis.mfcqi.cli.MFCQIDefaults;
+import com.integrallis.mfcqi.cli.Spinner;
 import com.integrallis.mfcqi.cli.ToolOutputCollector;
 import com.integrallis.mfcqi.core.MFCQICalculator;
 import com.integrallis.mfcqi.qualitygates.QualityGateConfig;
@@ -102,6 +103,13 @@ public final class AnalyzeCommand implements Callable<Integer> {
   int recommendationCount = 50;
 
   @Option(
+      names = {"--timeout"},
+      description =
+          "LLM request timeout in seconds (default 60; also via MFCQI_TIMEOUT). "
+              + "Raise it for slow local models.")
+  int timeoutSeconds = 0; // 0 = fall back to the env/config default
+
+  @Option(
       names = {"--min-score"},
       description = "Exit with code 1 if MFCQI score is below this threshold.")
   Double minScore;
@@ -166,12 +174,14 @@ public final class AnalyzeCommand implements Callable<Integer> {
     fromEnv.anthropicApiKey().ifPresent(b::anthropicApiKey);
     fromEnv.openaiApiKey().ifPresent(b::openaiApiKey);
     if (model != null && !model.isEmpty()) {
-      b.model(model);
+      b.model(normalizeModel(model, provider));
     } else if (provider != null) {
       b.model(defaultModelForProvider(provider));
     } else {
       b.model(fromEnv.model());
     }
+    // CLI --timeout wins; otherwise use the env/config value (MFCQI_TIMEOUT or the 60s default).
+    b.timeoutSeconds(timeoutSeconds > 0 ? timeoutSeconds : fromEnv.timeoutSeconds());
     AnalysisConfig cfg = b.build();
     try {
       cfg.validate();
@@ -182,6 +192,11 @@ public final class AnalyzeCommand implements Callable<Integer> {
       return null;
     }
     AnalysisEngine engine = analysisEngineFor(cfg);
+    Spinner spinner =
+        silent
+            ? null
+            : Spinner.start(
+                "Querying " + cfg.model() + " for recommendations (may take a while)...");
     try {
       ToolOutputs toolOutputs = ToolOutputCollector.collect(path, metrics);
       return engine.analyze(path.toString(), metrics, toolOutputs, recommendationCount, cfg);
@@ -190,7 +205,30 @@ public final class AnalyzeCommand implements Callable<Integer> {
         System.err.println("LLM analysis failed: " + e.getMessage());
       }
       return null;
+    } finally {
+      if (spinner != null) {
+        spinner.stop();
+      }
     }
+  }
+
+  /**
+   * Ensures the model string routes to the explicitly-chosen provider. For {@code --provider
+   * ollama} the model needs an {@code ollama:} prefix (that is how the Ollama provider claims the
+   * model and how validation knows no API key is required); without this, {@code --provider ollama
+   * --model qwen3-coder} would be mis-routed to a key-based provider and rejected.
+   *
+   * @param model the requested model id
+   * @param provider the forced provider, or {@code null}
+   * @return the model id, prefixed for Ollama when needed
+   */
+  static String normalizeModel(String model, ProviderName provider) {
+    if (provider == ProviderName.ollama
+        && !model.startsWith("ollama:")
+        && !model.startsWith("ollama/")) {
+      return "ollama:" + model;
+    }
+    return model;
   }
 
   private AnalysisEngine analysisEngineFor(AnalysisConfig cfg) {
