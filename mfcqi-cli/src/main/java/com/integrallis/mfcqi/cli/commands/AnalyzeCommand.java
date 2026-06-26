@@ -14,6 +14,7 @@ import com.integrallis.mfcqi.cli.MFCQIDefaults;
 import com.integrallis.mfcqi.cli.Spinner;
 import com.integrallis.mfcqi.cli.ToolOutputCollector;
 import com.integrallis.mfcqi.core.MFCQICalculator;
+import com.integrallis.mfcqi.core.Version;
 import com.integrallis.mfcqi.qualitygates.QualityGateConfig;
 import com.integrallis.mfcqi.qualitygates.QualityGateEvaluator;
 import com.integrallis.mfcqi.qualitygates.QualityGateResult;
@@ -475,9 +476,9 @@ public final class AnalyzeCommand implements Callable<Integer> {
 
     Map<String, Object> driver = new LinkedHashMap<>();
     driver.put("name", "MFCQI");
-    driver.put("version", "0.1.0-SNAPSHOT");
-    driver.put("informationUri", "https://github.com/bsbodden/mfcqi");
-    driver.put("semanticVersion", "0.1.0-SNAPSHOT");
+    driver.put("version", Version.current());
+    driver.put("informationUri", "https://github.com/integrallis/mfcqi-java");
+    driver.put("semanticVersion", Version.current());
     driver.put("rules", buildSarifRules(ms));
 
     Map<String, Object> tool = new LinkedHashMap<>();
@@ -529,7 +530,7 @@ public final class AnalyzeCommand implements Callable<Integer> {
     Map<String, Object> fd = new LinkedHashMap<>();
     fd.put("text", d.fullDescription);
     rule.put("fullDescription", fd);
-    rule.put("helpUri", "https://github.com/bsbodden/mfcqi");
+    rule.put("helpUri", "https://github.com/integrallis/mfcqi-java");
     Map<String, Object> props = new LinkedHashMap<>();
     props.put(
         "tags",

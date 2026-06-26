@@ -41,7 +41,8 @@ class MainTest {
   void versionFlag_printsVersion() {
     int code = new CommandLine(new Main()).execute("--version");
     assertThat(code).isZero();
-    assertThat(stdout.toString(StandardCharsets.UTF_8)).contains("mfcqi-java 0.1.0");
+    assertThat(stdout.toString(StandardCharsets.UTF_8))
+        .contains("mfcqi-java " + com.integrallis.mfcqi.core.Version.current());
   }
 
   @Test

@@ -15,7 +15,7 @@ import picocli.CommandLine.Command;
 @Command(
     name = "mfcqi",
     mixinStandardHelpOptions = true,
-    version = "mfcqi-java 0.1.0",
+    versionProvider = MfcqiVersionProvider.class,
     description = "Multi-Factor Code Quality Index for Java codebases.",
     subcommands = {
       AnalyzeCommand.class,

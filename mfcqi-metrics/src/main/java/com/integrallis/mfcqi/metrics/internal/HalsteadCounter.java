@@ -33,8 +33,8 @@ public final class HalsteadCounter {
    * identifiers/literals). Measured ~5x on the two functionally-equivalent sibling codebases (Java
    * mean per-file ≈1608 vs Python radon ≈322). Consumers that compare against radon-calibrated
    * formulas (e.g. the Maintainability Index's {@code ln(HV)} term) divide by this to get a
-   * radon-scale volume; the standalone {@link HalsteadVolume} bakes the same factor into its tanh
-   * divisor instead. See HalsteadVolume's javadoc for the calibration method.
+   * radon-scale volume; the standalone {@code HalsteadVolume} metric bakes the same factor into its
+   * tanh divisor instead. See HalsteadVolume's javadoc for the calibration method.
    */
   public static final double RADON_VOLUME_SCALE = 5.0;
 

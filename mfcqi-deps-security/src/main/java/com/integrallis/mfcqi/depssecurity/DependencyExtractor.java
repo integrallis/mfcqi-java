@@ -26,8 +26,8 @@ import org.xml.sax.SAXException;
  * for Java/Maven and Gradle conventions.
  *
  * <ul>
- *   <li>Maven {@code pom.xml} — proper XML parsing, reads {@code <dependency>}/<groupId/
- *       artifactId/version>
+ *   <li>Maven {@code pom.xml} — proper XML parsing, reads {@code <dependency>} group/artifact/
+ *       version elements
  *   <li>Gradle {@code build.gradle} / {@code build.gradle.kts} — regex-based extraction of literal
  *       {@code group:artifact:version} strings inside {@code implementation}/{@code api} /{@code
  *       testImplementation}/{@code runtimeOnly}/{@code compileOnly} declarations
