@@ -1,0 +1,84 @@
+name: Native Binaries
+
+# Builds the GraalVM native-image CLI for each platform and attaches the binaries to a release.
+# GitHub-hosted runners cover the four mainstream targets (no cross-compilation needed):
+#   ubuntu-latest -> linux x86_64   |   macos-13 -> macOS x86_64 (Intel)
+#   macos-14      -> macOS aarch64  |   windows-latest -> windows x86_64
+#
+# Triggered automatically after a release is published, and manually for a given tag (the release
+# workflow also dispatches it). Each job uploads e.g. `mfcqi-linux-x86_64` to the release.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to upload the binaries to (e.g. v0.2.0)"
+        required: true
+        type: string
+      ref:
+        description: "Git ref to build from (defaults to the tag; set to a branch to backfill)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  native:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, label: linux-x86_64, ext: "" }
+          - { os: macos-13, label: macos-x86_64, ext: "" }
+          - { os: macos-14, label: macos-aarch64, ext: "" }
+          - { os: windows-latest, label: windows-x86_64, ext: ".exe" }
+    steps:
+      - name: Resolve tag
+        id: tag
+        shell: bash
+        run: echo "tag=${{ github.event.release.tag_name || inputs.tag }}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref != '' && inputs.ref || steps.tag.outputs.tag }}
+
+      - name: Set up GraalVM (native-image)
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: "21"
+          distribution: "graalvm-community"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          native-image-job-reports: "true"
+
+      - name: Build native image
+        shell: bash
+        run: ./gradlew :mfcqi-cli:nativeCompile --no-daemon --stacktrace
+
+      - name: Package binary
+        id: pkg
+        shell: bash
+        run: |
+          SRC="mfcqi-cli/build/native/nativeCompile/mfcqi${{ matrix.ext }}"
+          OUT="mfcqi-${{ matrix.label }}${{ matrix.ext }}"
+          cp "$SRC" "$OUT"
+          # Strip on Unix to shrink the binary; harmless if strip is unavailable.
+          if [ "${{ runner.os }}" != "Windows" ]; then strip "$OUT" || true; fi
+          ls -la "$OUT"
+          echo "out=$OUT" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke-test the binary
+        if: runner.os != 'Windows'
+        shell: bash
+        run: ./${{ steps.pkg.outputs.out }} --version
+
+      - name: Upload to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ steps.tag.outputs.tag }}" "${{ steps.pkg.outputs.out }}" --clobber --repo "${{ github.repository }}"
