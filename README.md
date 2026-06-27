@@ -59,9 +59,17 @@ curl -fsSL -o mfcqi https://github.com/integrallis/mfcqi-java/releases/latest/do
 chmod +x mfcqi && ./mfcqi analyze .
 ```
 
-> A JVM distribution (`mfcqi-<version>.zip`/`.tar`, requiring a JRE 11+) is also attached to each
-> release for platforms without a native binary (e.g. Intel macOS).
->
+#### JVM distribution (any platform, needs a JRE 11+)
+
+For platforms without a native binary (e.g. Intel macOS or Linux arm64), each release also ships a
+JVM distribution that runs on any JRE 11+:
+
+```bash
+# download mfcqi-<version>.zip (or .tar) from the release, then (e.g. 0.2.0):
+unzip mfcqi-0.2.0.zip
+./mfcqi-0.2.0/bin/mfcqi analyze .     # bin/mfcqi.bat on Windows
+```
+
 > Intel-macOS native binary: GraalVM can't cross-compile it and GitHub lacks reliable Intel-mac
 > runners, so it's built on demand by a maintainer on Intel hardware via
 > [`scripts/build-macos-intel.sh`](scripts/build-macos-intel.sh) and attached to the release; once

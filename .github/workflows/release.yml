@@ -112,6 +112,23 @@ jobs:
               "$ZIP" "$TAR"
           fi
 
+      # Kick off the native-binary matrix + Homebrew/Scoop publish for this tag. A GITHUB_TOKEN
+      # cannot trigger another workflow (recursion guard), so this uses PACKAGES_PUBLISH_TOKEN,
+      # which must also carry `Actions: write` on this repo. Best-effort: a failure here does not
+      # fail the (already-published) release — dispatch native.yml manually if it doesn't fire.
+      - name: Trigger native binaries + package publish
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ secrets.PACKAGES_PUBLISH_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::notice::PACKAGES_PUBLISH_TOKEN not set — dispatch native.yml manually for v$VERSION."
+            exit 0
+          fi
+          gh workflow run native.yml -f tag="v$VERSION" --repo "${{ github.repository }}" \
+            || echo "::warning::Could not auto-dispatch native.yml — run it manually for v$VERSION."
+
       - name: Upload JReleaser logs
         if: always()
         uses: actions/upload-artifact@v4
