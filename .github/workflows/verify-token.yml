@@ -1,6 +1,6 @@
 name: Verify PACKAGES_PUBLISH_TOKEN
 # Throwaway: checks whether PACKAGES_PUBLISH_TOKEN can dispatch workflows (Actions: write).
-# It tries to dispatch _noop.yml using that token. Safe to delete after verifying.
+# It tries to dispatch badge.yml using that token. Safe to delete after verifying.
 on:
   workflow_dispatch:
 
@@ -16,7 +16,7 @@ jobs:
             echo "::error::PACKAGES_PUBLISH_TOKEN is not set."
             exit 1
           fi
-          if gh workflow run _noop.yml --repo "${{ github.repository }}"; then
+          if gh workflow run badge.yml --repo "${{ github.repository }}"; then
             echo "::notice::OK — PACKAGES_PUBLISH_TOKEN can dispatch workflows (Actions: write present)."
           else
             echo "::error::PACKAGES_PUBLISH_TOKEN cannot dispatch (missing Actions: write on this repo)."
