@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   per-platform binaries — `mfcqi-linux-x86_64`, `mfcqi-macos-x86_64`, `mfcqi-macos-aarch64`,
   `mfcqi-windows-x86_64.exe` — and attaches them to the release. Reflection/resource config is
   captured under `mfcqi-cli/.../META-INF/native-image/`. Startup drops from ~140ms to ~8ms.
+- **Distribution channels** for the native binary: a `curl | sh` install script (`install.sh`), an
+  auto-updated **Homebrew tap** (`brew install integrallis/tap/mfcqi`), and a **Scoop bucket**
+  (`scoop install mfcqi`). CI renders the formula/manifest from `packaging/` templates and pushes
+  them to the tap/bucket repos on each release.
 
 ## [0.2.0] - 2026-06-26
 

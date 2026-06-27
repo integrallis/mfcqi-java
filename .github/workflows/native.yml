@@ -82,3 +82,81 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload "${{ steps.tag.outputs.tag }}" "${{ steps.pkg.outputs.out }}" --clobber --repo "${{ github.repository }}"
+
+  # Renders the Homebrew formula + Scoop manifest from packaging/ templates with the release
+  # checksums and pushes them to the tap/bucket repos. Skips cleanly if PACKAGES_PUBLISH_TOKEN
+  # is not configured (so the native build still succeeds before the tap repos exist).
+  publish-packages:
+    name: Publish Homebrew + Scoop
+    needs: native
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve context + gate on token
+        id: ctx
+        env:
+          TOKEN: ${{ secrets.PACKAGES_PUBLISH_TOKEN }}
+        run: |
+          TAG="${{ github.event.release.tag_name || inputs.tag }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          if [ -n "$TOKEN" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::PACKAGES_PUBLISH_TOKEN not set — skipping Homebrew/Scoop publish."
+          fi
+
+      - name: Checkout (for packaging templates)
+        if: steps.ctx.outputs.ready == 'true'
+        uses: actions/checkout@v4
+
+      - name: Download release binaries and compute checksums
+        if: steps.ctx.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.ctx.outputs.tag }}
+        run: |
+          gh release download "$TAG" --repo "${{ github.repository }}" --dir dist \
+            --pattern 'mfcqi-linux-x86_64' --pattern 'mfcqi-macos-x86_64' \
+            --pattern 'mfcqi-macos-aarch64' --pattern 'mfcqi-windows-x86_64.exe'
+          cd dist
+          {
+            echo "SHA_LINUX_X64=$(sha256sum mfcqi-linux-x86_64 | cut -d' ' -f1)"
+            echo "SHA_MAC_X64=$(sha256sum mfcqi-macos-x86_64 | cut -d' ' -f1)"
+            echo "SHA_MAC_ARM=$(sha256sum mfcqi-macos-aarch64 | cut -d' ' -f1)"
+            echo "SHA_WIN_X64=$(sha256sum mfcqi-windows-x86_64.exe | cut -d' ' -f1)"
+          } >> "$GITHUB_ENV"
+
+      - name: Publish Homebrew formula
+        if: steps.ctx.outputs.ready == 'true'
+        env:
+          TOKEN: ${{ secrets.PACKAGES_PUBLISH_TOKEN }}
+          VERSION: ${{ steps.ctx.outputs.version }}
+          BASE: https://github.com/${{ github.repository }}/releases/download/${{ steps.ctx.outputs.tag }}
+        run: |
+          vars='${VERSION} ${BASE} ${SHA_LINUX_X64} ${SHA_MAC_X64} ${SHA_MAC_ARM}'
+          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/integrallis/homebrew-tap.git" tap
+          mkdir -p tap/Formula
+          envsubst "$vars" < packaging/mfcqi.rb > tap/Formula/mfcqi.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/mfcqi.rb
+          git commit -m "mfcqi ${VERSION}" && git push || echo "no formula change"
+
+      - name: Publish Scoop manifest
+        if: steps.ctx.outputs.ready == 'true'
+        env:
+          TOKEN: ${{ secrets.PACKAGES_PUBLISH_TOKEN }}
+          VERSION: ${{ steps.ctx.outputs.version }}
+          BASE: https://github.com/${{ github.repository }}/releases/download/${{ steps.ctx.outputs.tag }}
+        run: |
+          vars='${VERSION} ${BASE} ${SHA_WIN_X64}'
+          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/integrallis/scoop-bucket.git" bucket
+          mkdir -p bucket/bucket
+          envsubst "$vars" < packaging/mfcqi.json > bucket/bucket/mfcqi.json
+          cd bucket
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add bucket/mfcqi.json
+          git commit -m "mfcqi ${VERSION}" && git push || echo "no manifest change"

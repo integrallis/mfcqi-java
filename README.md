@@ -25,27 +25,44 @@ Traditional code quality tools provide dozens of metrics without a unified quali
 
 ### Installation
 
-Requires a Java runtime (JRE/JDK 11 or newer).
+The CLI ships as a **GraalVM native binary** — a single self-contained executable with **no Java
+required**. Pick whichever method suits you:
 
-#### Option 1: Download a release (recommended)
-
-Grab the CLI distribution from the
-[latest release](https://github.com/integrallis/mfcqi-java/releases/latest) — no clone or Gradle
-required.
+#### Homebrew (macOS & Linux)
 
 ```bash
-# Download mfcqi-<version>.zip (or .tar) from the GitHub release, then (e.g. 0.2.0):
-unzip mfcqi-0.2.0.zip
-./mfcqi-0.2.0/bin/mfcqi analyze .
-
-# Optional: put it on your PATH so you can run `mfcqi` from anywhere
-export PATH="$PWD/mfcqi-0.2.0/bin:$PATH"
+brew install integrallis/tap/mfcqi
 ```
 
-The archive is self-contained: a `bin/mfcqi` launcher (`bin/mfcqi.bat` on Windows) plus all
-dependency jars under `lib/`.
+#### Scoop (Windows)
 
-#### Option 2: Build from source
+```powershell
+scoop bucket add integrallis https://github.com/integrallis/scoop-bucket
+scoop install mfcqi
+```
+
+#### Install script (macOS & Linux)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/integrallis/mfcqi-java/main/install.sh | sh
+# Installs to ~/.local/bin by default; override with MFCQI_INSTALL_DIR / MFCQI_VERSION.
+```
+
+#### Manual download
+
+Grab the binary for your platform from the
+[latest release](https://github.com/integrallis/mfcqi-java/releases/latest) —
+`mfcqi-linux-x86_64`, `mfcqi-macos-aarch64`, `mfcqi-macos-x86_64`, or `mfcqi-windows-x86_64.exe`:
+
+```bash
+curl -fsSL -o mfcqi https://github.com/integrallis/mfcqi-java/releases/latest/download/mfcqi-linux-x86_64
+chmod +x mfcqi && ./mfcqi analyze .
+```
+
+> A JVM distribution (`mfcqi-<version>.zip`/`.tar`, requiring a JRE 11+) is also attached to each
+> release for platforms without a native binary.
+
+#### Build from source
 
 ```bash
 # Clone and build the multi-module project
