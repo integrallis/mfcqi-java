@@ -34,9 +34,10 @@ jobs:
       matrix:
         include:
           - { os: ubuntu-latest, label: linux-x86_64, ext: "" }
-          - { os: macos-13, label: macos-x86_64, ext: "" }
           - { os: macos-14, label: macos-aarch64, ext: "" }
           - { os: windows-latest, label: windows-x86_64, ext: ".exe" }
+          # macOS Intel (macos-13) is intentionally omitted — GraalVM Intel-mac runners are scarce
+          # and block the pipeline; Intel-mac users can use the JVM zip or build from source.
     steps:
       - name: Resolve tag
         id: tag
@@ -117,12 +118,11 @@ jobs:
           TAG: ${{ steps.ctx.outputs.tag }}
         run: |
           gh release download "$TAG" --repo "${{ github.repository }}" --dir dist \
-            --pattern 'mfcqi-linux-x86_64' --pattern 'mfcqi-macos-x86_64' \
+            --pattern 'mfcqi-linux-x86_64' \
             --pattern 'mfcqi-macos-aarch64' --pattern 'mfcqi-windows-x86_64.exe'
           cd dist
           {
             echo "SHA_LINUX_X64=$(sha256sum mfcqi-linux-x86_64 | cut -d' ' -f1)"
-            echo "SHA_MAC_X64=$(sha256sum mfcqi-macos-x86_64 | cut -d' ' -f1)"
             echo "SHA_MAC_ARM=$(sha256sum mfcqi-macos-aarch64 | cut -d' ' -f1)"
             echo "SHA_WIN_X64=$(sha256sum mfcqi-windows-x86_64.exe | cut -d' ' -f1)"
           } >> "$GITHUB_ENV"
@@ -134,7 +134,7 @@ jobs:
           VERSION: ${{ steps.ctx.outputs.version }}
           BASE: https://github.com/${{ github.repository }}/releases/download/${{ steps.ctx.outputs.tag }}
         run: |
-          vars='${VERSION} ${BASE} ${SHA_LINUX_X64} ${SHA_MAC_X64} ${SHA_MAC_ARM}'
+          vars='${VERSION} ${BASE} ${SHA_LINUX_X64} ${SHA_MAC_ARM}'
           git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/integrallis/homebrew-tap.git" tap
           mkdir -p tap/Formula
           envsubst "$vars" < packaging/mfcqi.rb > tap/Formula/mfcqi.rb

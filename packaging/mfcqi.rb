@@ -9,10 +9,7 @@ class Mfcqi < Formula
       url "${BASE}/mfcqi-macos-aarch64"
       sha256 "${SHA_MAC_ARM}"
     end
-    on_intel do
-      url "${BASE}/mfcqi-macos-x86_64"
-      sha256 "${SHA_MAC_X64}"
-    end
+    # Intel macOS: no native binary is published; use the JVM distribution or build from source.
   end
 
   on_linux do

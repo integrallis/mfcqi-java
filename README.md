@@ -52,7 +52,7 @@ curl -fsSL https://raw.githubusercontent.com/integrallis/mfcqi-java/main/install
 
 Grab the binary for your platform from the
 [latest release](https://github.com/integrallis/mfcqi-java/releases/latest) —
-`mfcqi-linux-x86_64`, `mfcqi-macos-aarch64`, `mfcqi-macos-x86_64`, or `mfcqi-windows-x86_64.exe`:
+`mfcqi-linux-x86_64`, `mfcqi-macos-aarch64`, or `mfcqi-windows-x86_64.exe`:
 
 ```bash
 curl -fsSL -o mfcqi https://github.com/integrallis/mfcqi-java/releases/latest/download/mfcqi-linux-x86_64
@@ -60,7 +60,7 @@ chmod +x mfcqi && ./mfcqi analyze .
 ```
 
 > A JVM distribution (`mfcqi-<version>.zip`/`.tar`, requiring a JRE 11+) is also attached to each
-> release for platforms without a native binary.
+> release for platforms without a native binary (e.g. Intel macOS).
 
 #### Build from source
 

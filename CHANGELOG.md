@@ -10,8 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **GraalVM native binaries**: the CLI now builds to a self-contained native executable (no JRE
   required) via the GraalVM native-image Gradle plugin. A CI matrix (`native.yml`) produces
-  per-platform binaries — `mfcqi-linux-x86_64`, `mfcqi-macos-x86_64`, `mfcqi-macos-aarch64`,
-  `mfcqi-windows-x86_64.exe` — and attaches them to the release. Reflection/resource config is
+  per-platform binaries — `mfcqi-linux-x86_64`, `mfcqi-macos-aarch64`, `mfcqi-windows-x86_64.exe` —
+  and attaches them to the release. Reflection/resource config is
   captured under `mfcqi-cli/.../META-INF/native-image/`. Startup drops from ~140ms to ~8ms.
 - **Distribution channels** for the native binary: a `curl | sh` install script (`install.sh`), an
   auto-updated **Homebrew tap** (`brew install integrallis/tap/mfcqi`), and a **Scoop bucket**

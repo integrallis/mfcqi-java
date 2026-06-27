@@ -36,6 +36,11 @@ if [ "$os_name" = "linux" ] && [ "$arch_name" = "aarch64" ]; then
   echo "No prebuilt linux-aarch64 binary yet — build from source (see the README)." >&2
   exit 1
 fi
+if [ "$os_name" = "macos" ] && [ "$arch_name" = "x86_64" ]; then
+  echo "No prebuilt Intel-macOS binary. Use the JVM distribution (mfcqi-<version>.zip, needs a JRE)" >&2
+  echo "or build from source — see the README." >&2
+  exit 1
+fi
 
 asset="mfcqi-${os_name}-${arch_name}"
 if [ "$VERSION" = "latest" ]; then
