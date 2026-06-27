@@ -346,6 +346,12 @@ cp .env.example .env
 ./gradlew :mfcqi-metrics:test
 ```
 
+### Releasing & CI
+
+Cutting a release (Maven Central + GitHub binaries + Homebrew/Scoop) is a single automated
+workflow. The full process, CI workflow reference, required secrets, GraalVM native-image build,
+and distribution setup are documented in **[RELEASING.md](RELEASING.md)**.
+
 ## Expected Score Ranges
 
 Based on the metrics used, typical MFCQI scores for different code quality levels:
@@ -475,6 +481,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 - [GitHub Repository](https://github.com/integrallis/mfcqi-java)
 - [Issue Tracker](https://github.com/integrallis/mfcqi-java/issues)
+- [Releasing & CI guide](RELEASING.md)
+- [Changelog](CHANGELOG.md)
 - [Sister project: mfcqi (Python)](https://github.com/bsbodden/mfcqi)
 
 ---
