@@ -61,6 +61,11 @@ chmod +x mfcqi && ./mfcqi analyze .
 
 > A JVM distribution (`mfcqi-<version>.zip`/`.tar`, requiring a JRE 11+) is also attached to each
 > release for platforms without a native binary (e.g. Intel macOS).
+>
+> Intel-macOS native binary: GraalVM can't cross-compile it and GitHub lacks reliable Intel-mac
+> runners, so it's built on demand by a maintainer on Intel hardware via
+> [`scripts/build-macos-intel.sh`](scripts/build-macos-intel.sh) and attached to the release; once
+> present, `install.sh` and direct download serve it automatically.
 
 #### Build from source
 

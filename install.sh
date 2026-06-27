@@ -36,11 +36,6 @@ if [ "$os_name" = "linux" ] && [ "$arch_name" = "aarch64" ]; then
   echo "No prebuilt linux-aarch64 binary yet — build from source (see the README)." >&2
   exit 1
 fi
-if [ "$os_name" = "macos" ] && [ "$arch_name" = "x86_64" ]; then
-  echo "No prebuilt Intel-macOS binary. Use the JVM distribution (mfcqi-<version>.zip, needs a JRE)" >&2
-  echo "or build from source — see the README." >&2
-  exit 1
-fi
 
 asset="mfcqi-${os_name}-${arch_name}"
 if [ "$VERSION" = "latest" ]; then
@@ -53,8 +48,14 @@ echo "Installing mfcqi (${os_name}-${arch_name}, version: ${VERSION})..."
 mkdir -p "$INSTALL_DIR"
 tmp="$(mktemp)"
 if ! curl -fsSL "$url" -o "$tmp"; then
-  echo "Download failed: $url" >&2
   rm -f "$tmp"
+  # Intel macOS native binaries are maintainer-built and may not be attached to every release.
+  if [ "$os_name" = "macos" ] && [ "$arch_name" = "x86_64" ]; then
+    echo "No Intel-macOS native binary on this release. Use the JVM distribution" >&2
+    echo "(mfcqi-${VERSION}.zip, needs a JRE 11+) or build from source — see the README." >&2
+  else
+    echo "Download failed: $url" >&2
+  fi
   exit 1
 fi
 chmod +x "$tmp"
