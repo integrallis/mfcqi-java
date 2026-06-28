@@ -13,8 +13,10 @@ import com.integrallis.mfcqi.analysis.ToolOutputs;
 import com.integrallis.mfcqi.cli.MFCQIDefaults;
 import com.integrallis.mfcqi.cli.Spinner;
 import com.integrallis.mfcqi.cli.ToolOutputCollector;
+import com.integrallis.mfcqi.core.JavaSourceFiles;
 import com.integrallis.mfcqi.core.MFCQICalculator;
 import com.integrallis.mfcqi.core.Version;
+import com.integrallis.mfcqi.kotlin.KotlinMetrics;
 import com.integrallis.mfcqi.qualitygates.QualityGateConfig;
 import com.integrallis.mfcqi.qualitygates.QualityGateEvaluator;
 import com.integrallis.mfcqi.qualitygates.QualityGateResult;
@@ -48,7 +50,7 @@ import picocli.CommandLine.Parameters;
 @Command(
     name = "analyze",
     mixinStandardHelpOptions = true,
-    description = "Analyze a Java codebase and produce an MFCQI score.")
+    description = "Analyze a Java or Kotlin codebase and produce an MFCQI score.")
 public final class AnalyzeCommand implements Callable<Integer> {
 
   @Parameters(index = "0", description = "Path to the codebase directory.", arity = "0..1")
@@ -125,6 +127,22 @@ public final class AnalyzeCommand implements Callable<Integer> {
       description = "Suppress non-essential stderr (auto-enabled for json/sarif output).")
   boolean silent;
 
+  @Option(
+      names = {"--language", "--lang"},
+      description =
+          "Source language: ${COMPLETION-CANDIDATES} (default: auto-detect by file extensions).")
+  Language language = Language.AUTO;
+
+  /** Supported analysis languages. */
+  enum Language {
+    AUTO,
+    JAVA,
+    KOTLIN
+  }
+
+  /** Set in {@link #call()} once the language is resolved; drives LLM tool-output collection. */
+  private boolean kotlinMode;
+
   @Override
   public Integer call() {
     if (!Files.isDirectory(path) && !Files.isRegularFile(path)) {
@@ -144,7 +162,12 @@ public final class AnalyzeCommand implements Callable<Integer> {
     boolean explicitlyRequestedLlm = (model != null && !model.isEmpty()) || provider != null;
     boolean shouldSkipLlm = skipLlm || !explicitlyRequestedLlm;
 
-    MFCQICalculator calculator = MFCQIDefaults.calculator();
+    kotlinMode = resolveKotlin(path);
+    if (kotlinMode && !silent) {
+      System.err.println("Analyzing as Kotlin (v1: cyclomatic complexity + secrets).");
+    }
+    MFCQICalculator calculator =
+        kotlinMode ? MFCQIDefaults.kotlinCalculator() : MFCQIDefaults.calculator();
     Map<String, Double> detailed = calculator.detailedMetrics(path);
     double score = detailed.getOrDefault("mfcqi_score", 0.0);
 
@@ -166,6 +189,28 @@ public final class AnalyzeCommand implements Callable<Integer> {
       return runQualityGate(score, detailed) ? 0 : 1;
     }
     return 0;
+  }
+
+  /** Decide whether to analyze as Kotlin: explicit flag, or auto-detect Kotlin-only codebases. */
+  private boolean resolveKotlin(Path target) {
+    switch (language) {
+      case KOTLIN:
+        return true;
+      case JAVA:
+        return false;
+      case AUTO:
+      default:
+        // Mixed or Java codebases use the richer Java metric set; pure Kotlin uses the Kotlin path.
+        return KotlinMetrics.hasSource(target) && !hasJavaSource(target);
+    }
+  }
+
+  private static boolean hasJavaSource(Path target) {
+    if (Files.isRegularFile(target)) {
+      Path name = target.getFileName();
+      return name != null && name.toString().endsWith(".java");
+    }
+    return !JavaSourceFiles.findAll(target).isEmpty();
   }
 
   AnalysisResult runLlm(Map<String, Double> metrics) {
@@ -199,7 +244,9 @@ public final class AnalyzeCommand implements Callable<Integer> {
             : Spinner.start(
                 "Querying " + cfg.model() + " for recommendations (may take a while)...");
     try {
-      ToolOutputs toolOutputs = ToolOutputCollector.collect(path, metrics);
+      // ToolOutputCollector is JavaParser-based; Kotlin v1 sends metric scores without tool output.
+      ToolOutputs toolOutputs =
+          kotlinMode ? ToolOutputs.empty() : ToolOutputCollector.collect(path, metrics);
       return engine.analyze(path.toString(), metrics, toolOutputs, recommendationCount, cfg);
     } catch (RuntimeException e) {
       if (!silent) {

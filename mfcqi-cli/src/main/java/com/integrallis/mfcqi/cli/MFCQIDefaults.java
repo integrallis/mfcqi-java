@@ -1,8 +1,10 @@
 package com.integrallis.mfcqi.cli;
 
 import com.integrallis.mfcqi.core.MFCQICalculator;
+import com.integrallis.mfcqi.core.Metric;
 import com.integrallis.mfcqi.depssecurity.DependencySecurityMetric;
 import com.integrallis.mfcqi.duplication.CodeDuplication;
+import com.integrallis.mfcqi.kotlin.KotlinMetrics;
 import com.integrallis.mfcqi.metrics.CognitiveComplexity;
 import com.integrallis.mfcqi.metrics.CouplingBetweenObjects;
 import com.integrallis.mfcqi.metrics.CyclomaticComplexity;
@@ -52,6 +54,22 @@ public final class MFCQIDefaults {
         .addMetric(new MHFMetric())
         .addMetric(new CouplingBetweenObjects())
         .addMetric(new LackOfCohesionOfMethods())
+        .build();
+  }
+
+  /**
+   * Build a {@link MFCQICalculator} for Kotlin codebases: the Kotlin AST metrics (v1: Cyclomatic
+   * Complexity) plus the language-neutral secrets scan, with a Kotlin source detector so a pure
+   * {@code .kt} codebase isn't treated as empty. The Java AST metrics don't apply to Kotlin.
+   */
+  public static MFCQICalculator kotlinCalculator() {
+    MFCQICalculator.Builder builder = MFCQICalculator.builder();
+    for (Metric<?> metric : KotlinMetrics.all()) {
+      builder.addMetric(metric);
+    }
+    return builder
+        .addMetric(new SecretsExposureMetric()) // language-neutral (handles .kt/.kts)
+        .analyzableSource(KotlinMetrics::hasSource)
         .build();
   }
 }

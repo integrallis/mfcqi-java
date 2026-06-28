@@ -41,7 +41,8 @@ public final class Main implements Runnable {
    * @param args command-line arguments
    */
   public static void main(String[] args) {
-    int exitCode = new CommandLine(new Main()).execute(args);
+    int exitCode =
+        new CommandLine(new Main()).setCaseInsensitiveEnumValuesAllowed(true).execute(args);
     System.exit(exitCode);
   }
 }
