@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MFCQI — Multi-Factor Code Quality Index</title>
+    <meta name="description" content="MFCQI computes a single code-quality score between 0 and 1 for Java and Kotlin codebases by combining evidence-based metrics with a geometric mean.">
+    <meta property="og:title" content="MFCQI — Multi-Factor Code Quality Index">
+    <meta property="og:description" content="A single code-quality score for Java and Kotlin, from a geometric mean of evidence-based metrics.">
+    <meta property="og:type" content="website">
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem('mfcqi-theme');
+                if (!t) t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', t);
+            } catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/styles.css">
+    <link rel="icon" type="image/png" href="assets/images/mfcqi.png">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="https://integrallis.com" class="nav-brand" aria-label="Integrallis">
+                <img class="ilogo" src="assets/images/integrallis-logo.png" alt="Integrallis">
+                <span class="sep">/</span>
+                <span class="product">mfcqi</span>
+            </a>
+            <div class="nav-right">
+                <div class="nav-links">
+                    <a href="#how">How it works</a>
+                    <a href="#features">Features</a>
+                    <a href="#metrics">Metrics</a>
+                </div>
+                <button id="theme-toggle" class="icon-btn" aria-label="Toggle theme" title="Toggle theme">
+                    <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                    <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                </button>
+                <a class="icon-btn" href="https://github.com/integrallis/mfcqi-java" aria-label="GitHub repository" title="GitHub">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.37.5 0 5.78 0 12.292c0 5.211 3.438 9.63 8.205 11.188.6.111.82-.254.82-.567 0-.28-.01-1.022-.015-2.005-3.338.711-4.042-1.582-4.042-1.582-.546-1.361-1.335-1.725-1.335-1.725-1.087-.731.084-.716.084-.716 1.205.082 1.838 1.215 1.838 1.215 1.07 1.803 2.809 1.282 3.495.981.108-.763.417-1.282.76-1.577-2.665-.295-5.466-1.309-5.466-5.827 0-1.287.465-2.339 1.235-3.164-.135-.298-.54-1.497.105-3.121 0 0 1.005-.316 3.3 1.209.96-.262 1.98-.392 3-.397 1.02.005 2.04.135 3 .397 2.28-1.525 3.285-1.209 3.285-1.209.645 1.624.24 2.823.12 3.121.765.825 1.23 1.877 1.23 3.164 0 4.53-2.805 5.527-5.475 5.817.42.354.81 1.077.81 2.182 0 1.578-.015 2.846-.015 3.229 0 .309.21.678.825.561C20.565 21.917 24 17.495 24 12.292 24 5.78 18.627.5 12 .5Z"/></svg>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero" id="top">
+        <div class="hero-content">
+            <img src="assets/images/mfcqi.png" alt="MFCQI" class="hero-logo reveal">
+            <div class="hero-eyebrow reveal"><span class="dot"></span> Multi-Factor Code Quality Index</div>
+            <h1 class="hero-title reveal">A single quality score for Java and Kotlin</h1>
+            <p class="hero-subtitle reveal">
+                Gauge your codebase quality from a geometric mean of evidence-based metrics.
+            </p>
+
+            <!-- Tabbed install widget -->
+            <div class="install reveal">
+                <div class="install-tabs" role="tablist">
+                    <button class="install-tab active" data-target="brew">Homebrew</button>
+                    <button class="install-tab" data-target="script">cURL</button>
+                    <button class="install-tab" data-target="scoop">Scoop</button>
+                    <button class="install-tab" data-target="maven">Maven</button>
+                </div>
+                <div class="install-cmd">
+                    <code><span class="prompt" id="install-prompt">$ </span><span id="install-text">brew install integrallis/tap/mfcqi</span></code>
+                    <button class="install-copy" id="install-copy" aria-label="Copy command" title="Copy">
+                        <svg class="clip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                        <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="hero-cta reveal">
+                <a href="https://github.com/integrallis/mfcqi-java" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.37.5 0 5.78 0 12.292c0 5.211 3.438 9.63 8.205 11.188.6.111.82-.254.82-.567 0-.28-.01-1.022-.015-2.005-3.338.711-4.042-1.582-4.042-1.582-.546-1.361-1.335-1.725-1.335-1.725-1.087-.731.084-.716.084-.716 1.205.082 1.838 1.215 1.838 1.215 1.07 1.803 2.809 1.282 3.495.981.108-.763.417-1.282.76-1.577-2.665-.295-5.466-1.309-5.466-5.827 0-1.287.465-2.339 1.235-3.164-.135-.298-.54-1.497.105-3.121 0 0 1.005-.316 3.3 1.209.96-.262 1.98-.392 3-.397 1.02.005 2.04.135 3 .397 2.28-1.525 3.285-1.209 3.285-1.209.645 1.624.24 2.823.12 3.121.765.825 1.23 1.877 1.23 3.164 0 4.53-2.805 5.527-5.475 5.817.42.354.81 1.077.81 2.182 0 1.578-.015 2.846-.015 3.229 0 .309.21.678.825.561C20.565 21.917 24 17.495 24 12.292 24 5.78 18.627.5 12 .5Z"/></svg>
+                    View source
+                </a>
+                <a href="#how" class="btn btn-secondary">How it works</a>
+            </div>
+            <p class="hero-python reveal">Working in Python? Meet the <a href="https://github.com/bsbodden/mfcqi">Python sister project ↗</a></p>
+        </div>
+        <div class="scroll-indicator"><div class="scroll-line"></div></div>
+    </section>
+
+    <!-- How it works / Drake analogy -->
+    <section class="section section-divider" id="how">
+        <div class="container">
+            <div class="section-header reveal">
+                <span class="section-label">how the score works</span>
+                <h2 class="section-title">The Drake Equation for Code Quality</h2>
+                <p class="section-description">The score is a geometric mean — a normalized product of independent metrics.</p>
+            </div>
+            <div class="equations">
+                <div class="equation reveal">
+                    <div class="eq-label">// Drake equation</div>
+                    <div class="eq">N = R<span class="dim">&#8902;</span> <span class="dim">·</span> f<sub>p</sub> <span class="dim">·</span> n<sub>e</sub> <span class="dim">·</span> f<sub>l</sub> <span class="dim">·</span> f<sub>i</sub> <span class="dim">·</span> f<sub>c</sub> <span class="dim">·</span> L</div>
+                    <p class="eq-note">Estimates a quantity as a product of independent factors. If any single factor is near zero, the whole product collapses toward zero.</p>
+                </div>
+                <div class="equation reveal">
+                    <div class="eq-label">// MFCQI</div>
+                    <div class="eq">MFCQI = (M&#8321; <span class="dim">×</span> M&#8322; <span class="dim">× … ×</span> M&#8345;)<span class="dim">^(1/n)</span></div>
+                    <p class="eq-note">A geometric mean is a normalized product of the quality metrics. One weak metric pulls the whole score down — so it is non-compensatory.</p>
+                </div>
+            </div>
+            <p class="analogy reveal">
+                Just as the Drake equation reaches its estimate by multiplying independent terms — where a
+                single small factor dominates the outcome — MFCQI multiplies its quality metrics. A codebase
+                <strong>can't trade a failing dimension for strong ones</strong>; every factor has to hold up.
+            </p>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="section section-divider" id="features">
+        <div class="container">
+            <div class="section-header reveal">
+                <span class="section-label">features</span>
+                <h2 class="section-title">What it does</h2>
+            </div>
+            <div class="cards-grid">
+                <div class="card reveal">
+                    <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+                    <h3 class="card-title">Single score</h3>
+                    <p class="card-description">One number in [0, 1] for overall quality — track it in CI, gate on it, badge it.</p>
+                </div>
+                <div class="card reveal">
+                    <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></div>
+                    <h3 class="card-title">Non-compensatory</h3>
+                    <p class="card-description">The geometric mean means a weak metric isn't offset by strong ones.</p>
+                </div>
+                <div class="card reveal">
+                    <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+                    <h3 class="card-title">Java &amp; Kotlin</h3>
+                    <p class="card-description">Detects the language and applies the matching metric set.</p>
+                </div>
+                <div class="card reveal">
+                    <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg></div>
+                    <h3 class="card-title">AI recommendations</h3>
+                    <p class="card-description">Bring your own key (BYOK) for recommendations — Anthropic, OpenAI, or a local Ollama model. Scoring itself needs no key.</p>
+                </div>
+                <div class="card reveal">
+                    <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg></div>
+                    <h3 class="card-title">Native binaries</h3>
+                    <p class="card-description">GraalVM-compiled CLI for macOS, Linux, and Windows — runs without a JVM.</p>
+                </div>
+                <div class="card reveal">
+                    <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg></div>
+                    <h3 class="card-title">Quality gates</h3>
+                    <p class="card-description">Configurable thresholds via YAML; a non-zero exit code on failure.</p>
+                </div>
+                <div class="card reveal">
+                    <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg></div>
+                    <h3 class="card-title">Machine-readable</h3>
+                    <p class="card-description">JSON and SARIF output, plus shields.io badges for your README.</p>
+                </div>
+                <div class="card reveal">
+                    <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/></svg></div>
+                    <h3 class="card-title">Security included</h3>
+                    <p class="card-description">SAST, dependency CVEs, secret scanning, and code-smell density — in the score.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Metrics -->
+    <section class="section section-divider" id="metrics">
+        <div class="container">
+            <div class="section-header reveal">
+                <span class="section-label">the metric family</span>
+                <h2 class="section-title">Evidence-based, paradigm-aware</h2>
+                <p class="section-description">Core metrics apply everywhere; object-oriented metrics are added only when the code is object-oriented, so procedural code isn't penalized for lacking classes.</p>
+            </div>
+            <div class="metrics-grid">
+                <div class="metric-group reveal">
+                    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg> Complexity &amp; maintainability</h3>
+                    <div class="metric-tags">
+                        <span class="metric-tag">Cyclomatic</span>
+                        <span class="metric-tag">Cognitive</span>
+                        <span class="metric-tag">Halstead Volume</span>
+                        <span class="metric-tag">Maintainability Index</span>
+                    </div>
+                </div>
+                <div class="metric-group reveal">
+                    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/></svg> Coverage</h3>
+                    <div class="metric-tags">
+                        <span class="metric-tag">Documentation</span>
+                        <span class="metric-tag">Code Duplication</span>
+                    </div>
+                </div>
+                <div class="metric-group reveal">
+                    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/></svg> Security</h3>
+                    <div class="metric-tags">
+                        <span class="metric-tag">SAST</span>
+                        <span class="metric-tag">Dependency CVEs (SCA)</span>
+                        <span class="metric-tag">Secrets Exposure</span>
+                        <span class="metric-tag">Code-Smell Density</span>
+                    </div>
+                </div>
+                <div class="metric-group reveal">
+                    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg> Object-oriented design</h3>
+                    <div class="metric-tags">
+                        <span class="metric-tag">RFC</span>
+                        <span class="metric-tag">DIT</span>
+                        <span class="metric-tag">MHF</span>
+                        <span class="metric-tag">CBO</span>
+                        <span class="metric-tag">LCOM</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="https://github.com/integrallis/mfcqi-java">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.37.5 0 5.78 0 12.292c0 5.211 3.438 9.63 8.205 11.188.6.111.82-.254.82-.567 0-.28-.01-1.022-.015-2.005-3.338.711-4.042-1.582-4.042-1.582-.546-1.361-1.335-1.725-1.335-1.725-1.087-.731.084-.716.084-.716 1.205.082 1.838 1.215 1.838 1.215 1.07 1.803 2.809 1.282 3.495.981.108-.763.417-1.282.76-1.577-2.665-.295-5.466-1.309-5.466-5.827 0-1.287.465-2.339 1.235-3.164-.135-.298-.54-1.497.105-3.121 0 0 1.005-.316 3.3 1.209.96-.262 1.98-.392 3-.397 1.02.005 2.04.135 3 .397 2.28-1.525 3.285-1.209 3.285-1.209.645 1.624.24 2.823.12 3.121.765.825 1.23 1.877 1.23 3.164 0 4.53-2.805 5.527-5.475 5.817.42.354.81 1.077.81 2.182 0 1.578-.015 2.846-.015 3.229 0 .309.21.678.825.561C20.565 21.917 24 17.495 24 12.292 24 5.78 18.627.5 12 .5Z"/></svg>
+                        GitHub
+                    </a>
+                    <a href="https://central.sonatype.com/namespace/com.integrallis">Maven Central</a>
+                    <a href="https://github.com/integrallis/mfcqi-java/blob/main/KOTLIN.md">Kotlin guide</a>
+                    <a href="https://github.com/bsbodden/mfcqi">Python sister project</a>
+                    <a href="https://github.com/integrallis/mfcqi-java/blob/main/LICENSE">MIT License</a>
+                </div>
+                <p class="footer-by">Built by <a href="https://integrallis.com"><img class="ilogo" src="assets/images/integrallis-logo.png" alt="Integrallis"></a></p>
+                <p class="footer-copyright">© 2026 Integrallis Software, LLC · MIT License</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="assets/js/scripts.js"></script>
+</body>
+</html>
