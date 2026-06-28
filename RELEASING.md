@@ -35,7 +35,15 @@ Homebrew/Scoop manifests.
 | Homebrew formula | `integrallis/homebrew-tap` | `native.yml` → `publish-packages` |
 | Scoop manifest | `integrallis/scoop-bucket` | `native.yml` → `publish-packages` |
 
-The CLI is **not** published to Maven Central — only the libraries are.
+The CLI is **not** published to Maven Central — only the libraries are. `mfcqi-kotlin` is also
+excluded from Maven Central (it depends on a JitPack artifact, `kotlinx-ast`); its capability ships
+**inside the CLI** distributions, which bundle it. So every CLI artifact — native binaries, Homebrew,
+Scoop, install script, JVM zip — includes Kotlin support automatically.
+
+> **Build note:** `mfcqi-kotlin` compiles on a **JDK 21 toolchain** (`jvmToolchain(21)`). CI runners
+> that build on JDK 25 (`build.yml`, `early-access.yml`) also install 21; the
+> `foojay-resolver-convention` settings plugin auto-provisions it anywhere it's missing. The release
+> runners (`release.yml`, `native.yml`) already use JDK/GraalVM 21.
 
 ## Workflows
 

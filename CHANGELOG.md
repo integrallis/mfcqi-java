@@ -5,6 +5,21 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Kotlin support (v1)**: MFCQI now scores Kotlin codebases. A new `mfcqi-kotlin` module parses
+  Kotlin via [kotlinx-ast](https://github.com/kotlinx/ast) (ANTLR — no Kotlin compiler, so it works
+  in the **native binaries** too) and contributes a Kotlin **Cyclomatic Complexity** metric whose
+  curve matches the Java metric; the language-neutral **Secrets** scan is reused. The CLI gains
+  `--language java|kotlin|auto` (alias `--lang`, case-insensitive) and **auto-detects** Kotlin-only
+  codebases. Kotlin ships seamlessly in every CLI distribution (native binaries, Homebrew, Scoop,
+  install script, JVM zip). See [KOTLIN.md](KOTLIN.md).
+
+### Changed
+- `MFCQICalculator.Builder.analyzableSource(Predicate<Path>)` makes the empty-codebase gate
+  pluggable (default unchanged — Java source detection), enabling the Kotlin calculator.
+
 ## [0.3.0] - 2026-06-27
 
 ### Added

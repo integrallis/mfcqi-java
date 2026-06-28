@@ -9,7 +9,9 @@
 ![logo](https://raw.githubusercontent.com/bsbodden/mfcqi/main/docs/mfcqi.png)
 
 **MFCQI** (Multi-Factor Code Quality Index) is a comprehensive code quality analysis tool that produces a single quality
-score (0.0-1.0) by combining multiple evidence-based metrics. This is the Java edition; the [Python edition](https://github.com/bsbodden/mfcqi) is its sibling — same formula, same family, different platform.
+score (0.0-1.0) by combining multiple evidence-based metrics. This is the Java edition (it also scores **Kotlin** — see
+[KOTLIN.md](KOTLIN.md)); the [Python edition](https://github.com/bsbodden/mfcqi) is its sibling — same formula, same
+family, different platform.
 
 ## Why MFCQI?
 
@@ -19,6 +21,7 @@ Traditional code quality tools provide dozens of metrics without a unified quali
 - **Evidence-Based**: Combines proven metrics using a research-backed approach
 - **AI-Enhanced**: Optional LLM integration for intelligent recommendations
 - **Fast Analysis**: Efficient static analysis of Java codebases via JavaParser
+- **Kotlin too**: Auto-detects and scores Kotlin codebases (native-binary friendly) — see [KOTLIN.md](KOTLIN.md)
 - **No Gaming**: Geometric mean formula prevents gaming individual metrics
 
 ## Quick Start
@@ -113,6 +116,9 @@ mfcqi analyze src/main/java
 
 # Analyze a single file
 mfcqi analyze src/main/java/com/example/Service.java
+
+# Analyze a Kotlin codebase (auto-detected; or force with --language kotlin) — see KOTLIN.md
+mfcqi analyze src/main/kotlin --language kotlin
 
 # Analyze with AI recommendations from a cloud model (reads ANTHROPIC_API_KEY / OPENAI_API_KEY)
 mfcqi analyze . --model claude-sonnet-4-5
@@ -481,6 +487,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 - [GitHub Repository](https://github.com/integrallis/mfcqi-java)
 - [Issue Tracker](https://github.com/integrallis/mfcqi-java/issues)
+- [Kotlin support guide](KOTLIN.md)
 - [Releasing & CI guide](RELEASING.md)
 - [Changelog](CHANGELOG.md)
 - [Sister project: mfcqi (Python)](https://github.com/bsbodden/mfcqi)
