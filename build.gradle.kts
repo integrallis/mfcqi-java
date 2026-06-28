@@ -11,13 +11,16 @@ allprojects {
 
     repositories {
         mavenCentral()
+        // mfcqi-kotlin's Kotlin parser (kotlinx-ast) is published on JitPack.
+        maven("https://jitpack.io")
     }
 }
 
-// Every module except the CLI is published to Maven Central as a library.
-// The CLI is shipped as a runnable distribution attached to a GitHub Release
-// (see mfcqi-cli/build.gradle.kts and jreleaser.yml).
-val libraryProjects = subprojects.filterNot { it.name == "mfcqi-cli" }
+// Published to Maven Central as libraries. The CLI ships as a native binary / runnable
+// distribution instead; mfcqi-kotlin is excluded for now because it depends on a JitPack
+// artifact (kotlinx-ast) that isn't on Maven Central.
+val nonPublished = setOf("mfcqi-cli", "mfcqi-kotlin")
+val libraryProjects = subprojects.filterNot { it.name in nonPublished }
 
 // ---------------------------------------------------------------------------
 // Common configuration applied to ALL modules (libraries + CLI)
