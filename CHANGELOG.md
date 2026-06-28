@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   codebases. Kotlin ships seamlessly in every CLI distribution (native binaries, Homebrew, Scoop,
   install script, JVM zip). See [KOTLIN.md](KOTLIN.md).
 
+- **`mfcqi-kotlin` on Maven Central**: the module is now published as a **shaded** artifact — the
+  JitPack-only `kotlinx-ast` parser (+ its ANTLR-Kotlin runtime) is bundled in, and the POM lists
+  only Central-resolvable dependencies, so consumers need no extra repositories. See
+  [KOTLIN.md](KOTLIN.md#using-mfcqi-kotlin-as-a-library).
+
 ### Changed
 - `MFCQICalculator.Builder.analyzableSource(Predicate<Path>)` makes the empty-codebase gate
   pluggable (default unchanged — Java source detection), enabling the Kotlin calculator.

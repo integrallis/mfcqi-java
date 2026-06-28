@@ -74,9 +74,22 @@ the metrics.
   approximate. Treat them as directional until the grounding work lands.
 - **KMP** (Kotlin Multiplatform) source sets and `expect`/`actual` are not yet specially handled —
   files are analyzed as plain Kotlin.
-- The `mfcqi-kotlin` **library** is not published to Maven Central (it depends on a JitPack
-  artifact). The capability ships through the **CLI** distributions. To consume it as a library, use
-  the source build / `publishToMavenLocal`.
+
+## Using `mfcqi-kotlin` as a library
+
+`mfcqi-kotlin` is published to **Maven Central** like the other modules — no extra repositories
+needed. Its Kotlin parser (kotlinx-ast, which is JitPack-only) is **shaded into the artifact**, and
+the POM lists only Central-resolvable dependencies, so consumers don't need to add JitPack:
+
+```kotlin
+repositories { mavenCentral() }            // no JitPack required
+dependencies { implementation("com.integrallis:mfcqi-kotlin:<version>") }
+```
+
+```java
+double avg  = new KotlinCyclomaticComplexity().extract(path);   // analyze a .kt/.kts tree
+double norm = new KotlinCyclomaticComplexity().normalize(avg);  // [0,1]
+```
 
 ## Roadmap
 

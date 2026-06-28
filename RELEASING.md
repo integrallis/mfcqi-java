@@ -29,16 +29,21 @@ Homebrew/Scoop manifests.
 
 | Artifact | Destination | Built by |
 |---|---|---|
-| 10 library modules (`mfcqi-core`, …) | Maven Central (`com.integrallis`) | `release.yml` (JReleaser) |
+| 11 library modules (`mfcqi-core`, …, `mfcqi-kotlin`) | Maven Central (`com.integrallis`) | `release.yml` (JReleaser) |
 | CLI JVM distribution (`mfcqi-<v>.zip`/`.tar`, needs a JRE) | GitHub release | `release.yml` (`gh`) |
 | CLI native binaries (linux-x64, macos-arm64, windows-x64) | GitHub release | `native.yml` (GraalVM) |
 | Homebrew formula | `integrallis/homebrew-tap` | `native.yml` → `publish-packages` |
 | Scoop manifest | `integrallis/scoop-bucket` | `native.yml` → `publish-packages` |
 
-The CLI is **not** published to Maven Central — only the libraries are. `mfcqi-kotlin` is also
-excluded from Maven Central (it depends on a JitPack artifact, `kotlinx-ast`); its capability ships
-**inside the CLI** distributions, which bundle it. So every CLI artifact — native binaries, Homebrew,
-Scoop, install script, JVM zip — includes Kotlin support automatically.
+The CLI is **not** published to Maven Central — only the libraries are. `mfcqi-kotlin` **is**
+published, as a **shaded jar**: its Kotlin parser (`kotlinx-ast` + the ANTLR-Kotlin runtime) is only
+on JitPack, so the Shadow plugin bundles just those `com.github.*` jars into the artifact and the
+published POM lists only Central-resolvable dependencies (kotlin-stdlib, kotlin-reflect,
+`com.benasher44:uuid`, slf4j, `mfcqi-core`). Gradle Module Metadata is disabled for that module so it
+can't re-advertise the JitPack coordinates. The shaded publication is defined in
+`mfcqi-kotlin/build.gradle.kts` and stages into the same `build/staging-deploy` directory, so
+`./gradlew build publish` + JReleaser deploy it like any other library. (Kotlin support also ships
+inside every CLI distribution, which bundles the module directly.)
 
 > **Build note:** `mfcqi-kotlin` compiles on a **JDK 21 toolchain** (`jvmToolchain(21)`). CI runners
 > that build on JDK 25 (`build.yml`, `early-access.yml`) also install 21; the
