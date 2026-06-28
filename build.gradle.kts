@@ -16,9 +16,10 @@ allprojects {
     }
 }
 
-// Published to Maven Central as libraries. The CLI ships as a native binary / runnable
-// distribution instead; mfcqi-kotlin is excluded for now because it depends on a JitPack
-// artifact (kotlinx-ast) that isn't on Maven Central.
+// Published to Maven Central as libraries via this shared configuration. The CLI ships as a native
+// binary / runnable distribution instead. mfcqi-kotlin is excluded *here* because it needs a bespoke
+// SHADED publication (it bundles the JitPack-only kotlinx-ast jars) — that is defined in
+// mfcqi-kotlin/build.gradle.kts and still stages into build/staging-deploy for JReleaser.
 val nonPublished = setOf("mfcqi-cli", "mfcqi-kotlin")
 val libraryProjects = subprojects.filterNot { it.name in nonPublished }
 
