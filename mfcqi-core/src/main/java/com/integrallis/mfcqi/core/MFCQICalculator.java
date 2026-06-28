@@ -30,9 +30,11 @@ public final class MFCQICalculator {
   static final double GEOMETRIC_MEAN_FLOOR = 0.1;
 
   private final Map<String, Metric<?>> metrics;
+  private final java.util.function.Predicate<Path> analyzableSource;
 
   private MFCQICalculator(Builder b) {
     this.metrics = Collections.unmodifiableMap(new LinkedHashMap<>(b.metrics));
+    this.analyzableSource = b.analyzableSource;
   }
 
   /**
@@ -90,12 +92,17 @@ public final class MFCQICalculator {
   }
 
   /** True when the codebase is a directory with no {@code .java} files anywhere underneath. */
-  private static boolean hasNoAnalyzableSource(Path codebase) {
+  private boolean hasNoAnalyzableSource(Path codebase) {
     if (java.nio.file.Files.isRegularFile(codebase)) {
       // Single-file mode: caller handed us a specific file; trust they wanted it scanned.
       return false;
     }
-    return JavaSourceFiles.findAll(codebase).isEmpty();
+    return !analyzableSource.test(codebase);
+  }
+
+  /** Default source detector: a directory is analyzable if it contains Java source files. */
+  private static boolean javaSourcePresent(Path codebase) {
+    return !JavaSourceFiles.findAll(codebase).isEmpty();
   }
 
   private static <T> double safeNormalize(Metric<T> metric, Path codebase) {
@@ -138,8 +145,23 @@ public final class MFCQICalculator {
   /** Fluent builder for {@link MFCQICalculator}. */
   public static final class Builder {
     private final LinkedHashMap<String, Metric<?>> metrics = new LinkedHashMap<>();
+    private java.util.function.Predicate<Path> analyzableSource =
+        MFCQICalculator::javaSourcePresent;
 
     private Builder() {}
+
+    /**
+     * Overrides how a directory is judged to contain analyzable source (used to short-circuit empty
+     * codebases to {@code 0.0}). Defaults to "contains Java source". A Kotlin calculator supplies a
+     * {@code .kt}/{@code .kts} detector here.
+     *
+     * @param detector returns {@code true} when the directory has analyzable source
+     * @return this builder, for chaining
+     */
+    public Builder analyzableSource(java.util.function.Predicate<Path> detector) {
+      this.analyzableSource = Objects.requireNonNull(detector, "detector");
+      return this;
+    }
 
     /**
      * Registers a metric, keyed by its {@link Metric#getName()}. Re-adding a metric with the same
