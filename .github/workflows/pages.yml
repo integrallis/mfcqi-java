@@ -1,13 +1,18 @@
 name: Deploy Docs Site
 
 # Publishes the static landing page in docs/ to GitHub Pages. No build step — it's hand-crafted
-# HTML/CSS/JS (see docs/), so this just uploads the directory as a Pages artifact and deploys it.
+# HTML/CSS/JS (see docs/). The one dynamic bit: the Maven install snippet's version is synced from
+# gradle.properties at deploy time, so it always reflects the released version.
 on:
   push:
     branches: [main]
     paths:
       - "docs/**"
+      - "gradle.properties"
       - ".github/workflows/pages.yml"
+  # Re-publish when a release is cut, so the version snippet updates as part of releasing.
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -28,6 +33,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Sync release version into the Maven install snippet
+        run: |
+          VERSION=$(grep -E '^version' gradle.properties | sed 's/.*=//' | tr -d '[:space:]')
+          echo "Syncing docs Maven version -> ${VERSION}"
+          sed -i "s/mfcqi-core:[0-9][0-9A-Za-z.-]*/mfcqi-core:${VERSION}/g" docs/assets/js/scripts.js
+          echo "Result: $(grep -o 'mfcqi-core:[0-9A-Za-z.-]*' docs/assets/js/scripts.js | head -1)"
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

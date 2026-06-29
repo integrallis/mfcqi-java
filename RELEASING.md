@@ -139,6 +139,10 @@ CONF=mfcqi-cli/src/main/resources/META-INF/native-image/com.integrallis/mfcqi-cl
 Picocli `--version` provider and the SARIF report both use it. Bumping that one line is the whole
 version change.
 
+The **docs landing page** also tracks it: `pages.yml` rewrites the Maven install snippet's version
+from `gradle.properties` at deploy time, and re-publishes on `release: published` — so the site's
+`com.integrallis:mfcqi-core:<version>` always matches the released version with no manual edit.
+
 ## Troubleshooting
 
 - **Always dry-run first.** It validates the entire deploy path (signing, Central POM rules,
