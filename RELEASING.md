@@ -110,6 +110,14 @@ JAVA_HOME=<graalvm> ./gradlew :mfcqi-cli:nativeCompile
 # -> mfcqi-cli/build/native/nativeCompile/mfcqi
 ```
 
+Before uploading or publishing a native binary, run the real-repository smoke test. It clones a few
+public Java/Kotlin repositories into a temporary directory and fails if the native CLI crashes or
+does not emit a numeric score:
+
+```bash
+scripts/smoke-real-repos.sh
+```
+
 GraalVM native-image **cannot cross-compile**, so each binary is built on its own platform. CI
 covers linux-x64 (ubuntu), macos-arm64 (macos-14), and windows-x64. **macOS Intel** is omitted
 (GitHub Intel-mac runners are scarce/unreliable); a maintainer can build it on Intel hardware with
