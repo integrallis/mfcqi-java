@@ -6,6 +6,9 @@ import static org.assertj.core.api.Assertions.within;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -75,6 +78,49 @@ class MFCQICalculatorTest {
   }
 
   @Test
+  void detailedMetrics_extractsEachMetricOnce(@TempDir Path tmp) throws java.io.IOException {
+    seedJavaFile(tmp);
+    CountingMetric a = new CountingMetric("a", 0.9);
+    CountingMetric b = new CountingMetric("b", 0.7);
+    MFCQICalculator calc = MFCQICalculator.builder().addMetric(a).addMetric(b).build();
+
+    java.util.Map<String, Double> detail = calc.detailedMetrics(tmp);
+
+    assertThat(detail.get("mfcqi_score")).isCloseTo(Math.pow(0.9 * 0.7, 0.5), within(1e-9));
+    assertThat(a.extractCount()).isEqualTo(1);
+    assertThat(b.extractCount()).isEqualTo(1);
+  }
+
+  @Test
+  void detailedMetrics_parallelismRunsMetricsConcurrentlyAndKeepsOrder(@TempDir Path tmp)
+      throws Exception {
+    seedJavaFile(tmp);
+    CountDownLatch bothStarted = new CountDownLatch(2);
+    CountDownLatch release = new CountDownLatch(1);
+    BlockingMetric a = new BlockingMetric("a", 0.9, bothStarted, release);
+    BlockingMetric b = new BlockingMetric("b", 0.7, bothStarted, release);
+    MFCQICalculator calc =
+        MFCQICalculator.builder().parallelism(2).addMetric(a).addMetric(b).build();
+
+    AtomicInteger completed = new AtomicInteger();
+    Thread worker =
+        new Thread(
+            () -> {
+              calc.detailedMetrics(tmp);
+              completed.incrementAndGet();
+            });
+    worker.start();
+
+    assertThat(bothStarted.await(2, TimeUnit.SECONDS)).isTrue();
+    assertThat(completed.get()).isEqualTo(0);
+    release.countDown();
+    worker.join(2_000);
+
+    assertThat(completed.get()).isEqualTo(1);
+    assertThat(calc.detailedMetrics(tmp).keySet()).containsExactly("a", "b", "mfcqi_score");
+  }
+
+  @Test
   void calculate_emptyCodebaseShortCircuitsToZero(@TempDir Path tmp) {
     // No .java files anywhere — Python returns 0.0 to avoid misleading partial scores from
     // metrics that default to 1.0 on empty input.
@@ -118,7 +164,7 @@ class MFCQICalculatorTest {
     assertThat(calc.calculate(tmp)).isCloseTo(Math.sqrt(0.1), within(1e-9));
   }
 
-  private static final class ConstantMetric extends Metric<Double> {
+  private static class ConstantMetric extends Metric<Double> {
     private final String name;
     private final double value;
 
@@ -183,6 +229,49 @@ class MFCQICalculatorTest {
     @Override
     public String getName() {
       return name;
+    }
+  }
+
+  private static final class CountingMetric extends ConstantMetric {
+    private final AtomicInteger extractCount = new AtomicInteger();
+
+    CountingMetric(String name, double value) {
+      super(name, value);
+    }
+
+    @Override
+    public Double extract(Path codebase) {
+      extractCount.incrementAndGet();
+      return super.extract(codebase);
+    }
+
+    int extractCount() {
+      return extractCount.get();
+    }
+  }
+
+  private static final class BlockingMetric extends ConstantMetric {
+    private final CountDownLatch bothStarted;
+    private final CountDownLatch release;
+
+    BlockingMetric(String name, double value, CountDownLatch bothStarted, CountDownLatch release) {
+      super(name, value);
+      this.bothStarted = bothStarted;
+      this.release = release;
+    }
+
+    @Override
+    public Double extract(Path codebase) {
+      bothStarted.countDown();
+      try {
+        if (!release.await(5, TimeUnit.SECONDS)) {
+          throw new AssertionError("timed out waiting for release");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError(e);
+      }
+      return super.extract(codebase);
     }
   }
 }

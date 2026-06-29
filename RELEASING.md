@@ -116,6 +116,7 @@ does not emit a numeric score:
 
 ```bash
 scripts/smoke-real-repos.sh
+MFCQI_PARALLELISM=4 scripts/smoke-real-repos.sh
 ```
 
 GraalVM native-image **cannot cross-compile**, so each binary is built on its own platform. CI

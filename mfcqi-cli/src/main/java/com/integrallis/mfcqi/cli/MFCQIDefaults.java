@@ -38,7 +38,13 @@ public final class MFCQIDefaults {
 
   /** Build a {@link MFCQICalculator} with the default metric registry. */
   public static MFCQICalculator calculator() {
+    return calculator(1);
+  }
+
+  /** Build a {@link MFCQICalculator} with the default metric registry and worker count. */
+  public static MFCQICalculator calculator(int parallelism) {
     return MFCQICalculator.builder()
+        .parallelism(parallelism)
         .addMetric(new CyclomaticComplexity())
         .addMetric(new CognitiveComplexity())
         .addMetric(new HalsteadVolume())
@@ -63,7 +69,13 @@ public final class MFCQIDefaults {
    * {@code .kt} codebase isn't treated as empty. The Java AST metrics don't apply to Kotlin.
    */
   public static MFCQICalculator kotlinCalculator() {
+    return kotlinCalculator(1);
+  }
+
+  /** Build a Kotlin {@link MFCQICalculator} with the requested worker count. */
+  public static MFCQICalculator kotlinCalculator(int parallelism) {
     MFCQICalculator.Builder builder = MFCQICalculator.builder();
+    builder.parallelism(parallelism);
     for (Metric<?> metric : KotlinMetrics.all()) {
       builder.addMetric(metric);
     }

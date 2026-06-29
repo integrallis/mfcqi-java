@@ -118,6 +118,11 @@ public final class AnalyzeCommand implements Callable<Integer> {
   Double minScore;
 
   @Option(
+      names = {"--parallelism"},
+      description = "Maximum number of metrics to evaluate concurrently. Default: 1.")
+  int parallelism = 1;
+
+  @Option(
       names = {"--quality-gate"},
       description = "Evaluate against .mfcqi.yaml quality gates after rendering output.")
   boolean qualityGate;
@@ -149,6 +154,10 @@ public final class AnalyzeCommand implements Callable<Integer> {
       System.err.println("Path does not exist or is not analyzable: " + path);
       return 2;
     }
+    if (parallelism < 1) {
+      System.err.println("parallelism must be positive");
+      return 2;
+    }
 
     // Auto-silent for machine formats — Python: `if output_format in ("json", "sarif"): silent =
     // True`
@@ -167,7 +176,9 @@ public final class AnalyzeCommand implements Callable<Integer> {
       System.err.println("Analyzing as Kotlin (v1: cyclomatic complexity + secrets).");
     }
     MFCQICalculator calculator =
-        kotlinMode ? MFCQIDefaults.kotlinCalculator() : MFCQIDefaults.calculator();
+        kotlinMode
+            ? MFCQIDefaults.kotlinCalculator(parallelism)
+            : MFCQIDefaults.calculator(parallelism);
     Map<String, Double> detailed = calculator.detailedMetrics(path);
     double score = detailed.getOrDefault("mfcqi_score", 0.0);
 

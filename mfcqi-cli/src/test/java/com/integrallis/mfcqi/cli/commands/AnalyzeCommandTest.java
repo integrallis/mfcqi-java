@@ -235,6 +235,39 @@ class AnalyzeCommandTest {
   }
 
   @Test
+  void cli_helpListsParallelismOption() {
+    int code = new CommandLine(new Main()).execute("analyze", "--help");
+
+    assertThat(code).isEqualTo(0);
+    assertThat(stdout.toString(StandardCharsets.UTF_8)).contains("--parallelism");
+  }
+
+  @Test
+  void cli_parallelismOptionRunsAnalysis(@TempDir Path tmp) throws Exception {
+    Path src = Files.createDirectories(tmp.resolve("src/main/java"));
+    Files.writeString(src.resolve("X.java"), "public class X { public int v() { return 1; } }");
+
+    int code =
+        new CommandLine(new Main())
+            .execute(
+                "analyze", "--skip-llm", "--parallelism", "2", "--format", "json", tmp.toString());
+
+    assertThat(code).isEqualTo(0);
+    assertThat(stdout.toString(StandardCharsets.UTF_8)).contains("\"mfcqi_score\"");
+  }
+
+  @Test
+  void cli_parallelismRejectsNonPositiveValue(@TempDir Path tmp) throws Exception {
+    Path src = Files.createDirectories(tmp.resolve("src/main/java"));
+    Files.writeString(src.resolve("X.java"), "public class X { public int v() { return 1; } }");
+
+    int code = new CommandLine(new Main()).execute("analyze", "--parallelism", "0", tmp.toString());
+
+    assertThat(code).isEqualTo(2);
+    assertThat(stderr.toString(StandardCharsets.UTF_8)).contains("parallelism must be positive");
+  }
+
+  @Test
   void cli_minScoreReturnsOneWhenBelowThreshold(@TempDir Path tmp) throws Exception {
     Path src = Files.createDirectories(tmp.resolve("src/main/java"));
     Files.writeString(src.resolve("X.java"), "public class X {}");

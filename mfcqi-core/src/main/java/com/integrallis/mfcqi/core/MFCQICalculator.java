@@ -7,6 +7,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,10 +35,12 @@ public final class MFCQICalculator {
 
   private final Map<String, Metric<?>> metrics;
   private final java.util.function.Predicate<Path> analyzableSource;
+  private final int parallelism;
 
   private MFCQICalculator(Builder b) {
     this.metrics = Collections.unmodifiableMap(new LinkedHashMap<>(b.metrics));
     this.analyzableSource = b.analyzableSource;
+    this.parallelism = b.parallelism;
   }
 
   /**
@@ -62,11 +68,7 @@ public final class MFCQICalculator {
     if (metrics.isEmpty()) {
       return 0.0;
     }
-    List<Double> normalized = new ArrayList<>(metrics.size());
-    for (Metric<?> m : metrics.values()) {
-      normalized.add(safeNormalize(m, codebase));
-    }
-    return geometricMean(normalized);
+    return geometricMean(new ArrayList<>(metricScores(codebase).values()));
   }
 
   /**
@@ -84,11 +86,36 @@ public final class MFCQICalculator {
       out.put("mfcqi_score", 0.0);
       return out;
     }
-    for (Map.Entry<String, Metric<?>> e : metrics.entrySet()) {
-      out.put(e.getKey(), safeNormalize(e.getValue(), codebase));
-    }
-    out.put("mfcqi_score", calculate(codebase));
+    out.putAll(metricScores(codebase));
+    out.put("mfcqi_score", geometricMean(new ArrayList<>(out.values())));
     return out;
+  }
+
+  private Map<String, Double> metricScores(Path codebase) {
+    if (parallelism <= 1 || metrics.size() <= 1) {
+      Map<String, Double> out = new LinkedHashMap<>();
+      for (Map.Entry<String, Metric<?>> e : metrics.entrySet()) {
+        out.put(e.getKey(), safeNormalize(e.getValue(), codebase));
+      }
+      return out;
+    }
+
+    ExecutorService executor = Executors.newFixedThreadPool(Math.min(parallelism, metrics.size()));
+    try {
+      Map<String, Future<Double>> futures = new LinkedHashMap<>();
+      for (Map.Entry<String, Metric<?>> e : metrics.entrySet()) {
+        Metric<?> metric = e.getValue();
+        futures.put(e.getKey(), executor.submit(() -> safeNormalize(metric, codebase)));
+      }
+
+      Map<String, Double> out = new LinkedHashMap<>();
+      for (Map.Entry<String, Future<Double>> e : futures.entrySet()) {
+        out.put(e.getKey(), safeGet(e.getKey(), e.getValue()));
+      }
+      return out;
+    } finally {
+      executor.shutdownNow();
+    }
   }
 
   /** True when the codebase is a directory with no {@code .java} files anywhere underneath. */
@@ -112,6 +139,19 @@ public final class MFCQICalculator {
       return clamp01(n);
     } catch (RuntimeException e) {
       LOG.debug("Metric '{}' failed; using 0.0", metric.getName(), e);
+      return 0.0;
+    }
+  }
+
+  private static double safeGet(String metricName, Future<Double> future) {
+    try {
+      return future.get();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.debug("Metric '{}' interrupted; using 0.0", metricName, e);
+      return 0.0;
+    } catch (ExecutionException e) {
+      LOG.debug("Metric '{}' failed; using 0.0", metricName, e);
       return 0.0;
     }
   }
@@ -147,6 +187,7 @@ public final class MFCQICalculator {
     private final LinkedHashMap<String, Metric<?>> metrics = new LinkedHashMap<>();
     private java.util.function.Predicate<Path> analyzableSource =
         MFCQICalculator::javaSourcePresent;
+    private int parallelism = 1;
 
     private Builder() {}
 
@@ -174,6 +215,23 @@ public final class MFCQICalculator {
     public Builder addMetric(Metric<?> metric) {
       Objects.requireNonNull(metric, "metric");
       metrics.put(metric.getName(), metric);
+      return this;
+    }
+
+    /**
+     * Sets the maximum number of metrics evaluated concurrently. The default is {@code 1}, which
+     * preserves serial execution. Values greater than one keep output ordering deterministic by
+     * collecting results in metric registration order.
+     *
+     * @param parallelism max metric workers; must be positive
+     * @return this builder, for chaining
+     * @throws IllegalArgumentException if {@code parallelism < 1}
+     */
+    public Builder parallelism(int parallelism) {
+      if (parallelism < 1) {
+        throw new IllegalArgumentException("parallelism must be positive");
+      }
+      this.parallelism = parallelism;
       return this;
     }
 

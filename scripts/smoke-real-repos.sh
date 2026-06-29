@@ -10,6 +10,7 @@ BIN="${MFCQI_BIN:-$ROOT/mfcqi-cli/build/native/nativeCompile/mfcqi}"
 WORKDIR="${MFCQI_SMOKE_DIR:-${TMPDIR:-/tmp}/mfcqi-real-repos-smoke}"
 REPORTS="$WORKDIR/reports"
 TIMEOUT_SECONDS="${MFCQI_SMOKE_TIMEOUT:-180}"
+PARALLELISM="${MFCQI_PARALLELISM:-1}"
 
 if [ ! -x "$BIN" ]; then
   echo "Native binary not found: $BIN" >&2
@@ -62,9 +63,9 @@ run_analysis() {
 
   echo "Analyzing $name ($language): $target" >&2
   if [ "$language" = "kotlin" ]; then
-    run_with_timeout "$BIN" analyze "$target" --language kotlin --format json --output "$report" >"$log" 2>&1
+    run_with_timeout "$BIN" analyze "$target" --language kotlin --parallelism "$PARALLELISM" --format json --output "$report" >"$log" 2>&1
   else
-    run_with_timeout "$BIN" analyze "$target" --format json --output "$report" >"$log" 2>&1
+    run_with_timeout "$BIN" analyze "$target" --parallelism "$PARALLELISM" --format json --output "$report" >"$log" 2>&1
   fi
 
   local score
