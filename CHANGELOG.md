@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-29
+
 ### Added
 - **Kotlin support (v1)**: MFCQI now scores Kotlin codebases. A new `mfcqi-kotlin` module parses
   Kotlin via [kotlinx-ast](https://github.com/kotlinx/ast) (ANTLR — no Kotlin compiler, so it works
@@ -21,9 +23,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only Central-resolvable dependencies, so consumers need no extra repositories. See
   [KOTLIN.md](KOTLIN.md#using-mfcqi-kotlin-as-a-library).
 
+- **Opt-in parallel metric execution**: `mfcqi analyze --parallelism <n>` evaluates metrics
+  concurrently while preserving deterministic output ordering. The default remains serial
+  (`--parallelism 1`) until broader concurrency soak coverage proves a parallel default is safe.
+
+- **Real-repository native smoke testing**: `scripts/smoke-real-repos.sh` now analyzes public Java
+  and Kotlin repositories with the native CLI, including an `MFCQI_PARALLELISM` knob for parallel
+  smoke runs.
+
 ### Changed
 - `MFCQICalculator.Builder.analyzableSource(Predicate<Path>)` makes the empty-codebase gate
   pluggable (default unchanged — Java source detection), enabling the Kotlin calculator.
+
+- `MFCQICalculator.detailedMetrics(Path)` now extracts each metric once and derives
+  `mfcqi_score` from that same detail map instead of recomputing every metric.
+
+### Fixed
+- Native-image analysis no longer crashes on JavaParser-heavy real repositories such as Gson and
+  Picocli. The native reflection config now registers JavaParser AST fields required by metamodel
+  traversal.
 
 ## [0.3.0] - 2026-06-27
 
@@ -90,6 +108,8 @@ First public release of the MFCQI Java edition.
   its own alphabet constants and now skips Java test sources; documentation coverage excludes
   `@Override` methods (their contract is inherited). The library's self-score is 0.89.
 
+[Unreleased]: https://github.com/integrallis/mfcqi-java/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/integrallis/mfcqi-java/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/integrallis/mfcqi-java/releases/tag/v0.3.0
 [0.2.0]: https://github.com/integrallis/mfcqi-java/releases/tag/v0.2.0
 [0.1.0]: https://github.com/integrallis/mfcqi-java/releases/tag/v0.1.0
