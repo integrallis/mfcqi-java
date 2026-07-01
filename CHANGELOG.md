@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Kotlin now implements the complete Java metric contract: 13 language-aware source metrics plus
+  the shared Dependency Security and Secrets Exposure metrics.
+- Mixed Java/Kotlin analysis combines corresponding source metrics under one stable 15-metric
+  contract. AUTO detection, badge generation, and standalone quality gates select it when both
+  languages are present.
+
+### Changed
+- Kotlin AST analysis and duplication detection now use PMD 7.24.0's official-grammar Kotlin
+  frontend and CPD engine. The JitPack-only kotlinx-ast dependency and shaded publication are
+  removed.
+- Kotlin source discovery analyzes `.kt` files and excludes unsupported `.kts` build/general
+  scripts.
+
+### Fixed
+- Kotlin analysis no longer reports only Cyclomatic Complexity and Secrets Exposure.
+- Gradle Kotlin build scripts no longer emit parser diagnostics or contaminate JSON output during
+  real-repository analysis.
+
 ## [0.4.0] - 2026-06-29
 
 ### Added

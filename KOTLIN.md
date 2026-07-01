@@ -1,101 +1,101 @@
 # Analyzing Kotlin with MFCQI
 
-MFCQI scores **Kotlin** codebases in addition to Java. The same CLI, the same
-`[0.0, 1.0]` geometric-mean score, the same native binaries — it auto-detects the language.
-
-> **Status: v1.** Kotlin support is intentionally focused (see [Scope](#what-v1-measures) and
-> [Roadmap](#roadmap)). It is production-usable for a complexity-and-secrets quality signal today and
-> grows from there.
+MFCQI analyzes Java, Kotlin, and mixed Java/Kotlin repositories with the same 15-metric output
+contract and the same `[0.0, 1.0]` geometric-mean score.
 
 ## Quick start
 
-Install the CLI as usual (see the [README](README.md#installation)) — Kotlin needs no extra setup,
-including in the **native binaries** (no JVM, no Kotlin compiler required):
+Install the CLI as described in the [README](README.md#installation). Kotlin analysis needs no JVM
+or Kotlin compiler when using a native binary.
 
 ```bash
-# Auto-detects Kotlin when the codebase is Kotlin-only:
+# Auto-detect Java, Kotlin, or a mixed repository.
 mfcqi analyze .
 
-# Or be explicit (case-insensitive):
-mfcqi analyze path/to/kotlin-project --language kotlin
+# Force a mode when analyzing a selected source root.
+mfcqi analyze src/main/kotlin --language kotlin
+mfcqi analyze . --language mixed
 ```
 
-Example:
-
-```
-$ mfcqi analyze src/main/kotlin --language kotlin
-Analyzing as Kotlin (v1: cyclomatic complexity + secrets).
-Score: 0.929
-
-Metric breakdown:
-  Cyclomatic Complexity          0.864
-  Secrets Exposure               1.000
-```
-
-## Language selection
-
-`--language` (alias `--lang`) takes `auto` (default), `java`, or `kotlin`:
+`--language` (alias `--lang`) accepts:
 
 | Value | Behavior |
 |-------|----------|
-| `auto` | Kotlin-only codebases → Kotlin metrics; any Java present → the (richer) Java metric set |
-| `kotlin` | Force the Kotlin metric set |
-| `java` | Force the Java metric set |
+| `auto` | Select Java, Kotlin, or mixed analysis from discovered source files |
+| `kotlin` | Analyze `.kt` files with the Kotlin metric implementations |
+| `java` | Analyze `.java` files with the Java metric implementations |
+| `mixed` | Combine corresponding Java and Kotlin source metrics |
 
-For a **mixed** Java+Kotlin repository, `auto` selects the Java path today (its metric set is
-broader). Point `--language kotlin` at the Kotlin source root to score the Kotlin side explicitly.
+Badge generation and the standalone `quality-gate` command use the same automatic language
+selection.
 
-## What v1 measures
+## Metric contract
 
-The Kotlin score is the geometric mean of:
+Kotlin reports the same metric keys as Java:
 
-- **Cyclomatic Complexity** — average per-function complexity over all `.kt`/`.kts` files. The
-  aggregation and normalization curve are identical to the Java metric, so **Kotlin and Java scores
-  are directly comparable**.
-- **Secrets Exposure** — the language-neutral secrets scan (regex + Shannon entropy), which already
-  understands `.kt`/`.kts`.
+- Cyclomatic Complexity
+- Cognitive Complexity
+- Halstead Volume
+- Maintainability Index
+- Code Duplication
+- Documentation Coverage
+- security
+- Code Smell Density
+- rfc
+- dit
+- mhf
+- Coupling Between Objects
+- Lack of Cohesion of Methods
+- Dependency Security
+- Secrets Exposure
 
-The geometric mean is non-compensatory: a single weak factor drags the score down.
+The source metrics use the same normalization curves and weights as their Java counterparts.
+Dependency Security and Secrets Exposure are shared language-neutral metrics. In mixed mode, MFCQI
+averages each corresponding Java and Kotlin normalized source metric, then evaluates the two shared
+metrics once.
 
-## How it works (and why it's native-friendly)
+## Implementation
 
-Kotlin is parsed with [**kotlinx-ast**](https://github.com/kotlinx/ast)'s ANTLR backend — **not** the
-Kotlin compiler. The compiler frontend (`kotlin-compiler-embeddable`) is heavy and reflection-laden
-and resists GraalVM native-image; an ANTLR grammar is syntactic-only (exactly what these metrics
-need) and compiles cleanly into the native binary. The parser sits behind a single internal seam, so
-a higher-fidelity Kotlin-compiler/PSI backend can be added later as a JVM-only mode without changing
-the metrics.
+Kotlin parsing and duplication detection use
+[PMD 7's Kotlin support](https://docs.pmd-code.org/latest/pmd_languages_kotlin.html), which is based
+on the official Kotlin grammar. MFCQI calculates its metric formulas over PMD's typed AST and uses
+PMD CPD for duplication detection. A fingerprinted immutable analysis cache is shared by concurrently
+executing metrics, so `--parallelism` does not parse the repository once per metric.
 
-## Limitations (v1)
+PMD does not embed the Kotlin compiler, and the implementation is verified as part of the GraalVM
+native CLI build. Kotlin compiler/PSI and Detekt are not runtime dependencies.
 
-- **Focused metric set** — only Cyclomatic Complexity and Secrets so far (see Roadmap).
-- **LLM recommendations are not yet grounded** for Kotlin: the analysis engine receives the metric
-  scores but not per-finding tool output, so any file/line references in AI recommendations are
-  approximate. Treat them as directional until the grounding work lands.
-- **KMP** (Kotlin Multiplatform) source sets and `expect`/`actual` are not yet specially handled —
-  files are analyzed as plain Kotlin.
+## Scope and limitations
 
-## Using `mfcqi-kotlin` as a library
+- Source discovery includes `.kt` files. `.kts` scripts are excluded because PMD's Kotlin source
+  frontend does not parse Gradle or general Kotlin script grammar.
+- Metrics that require semantic type resolution use syntactic Kotlin equivalents. For example, CBO
+  uses declared type references and DIT follows declared inheritance.
+- Kotlin Multiplatform source sets are analyzed as ordinary Kotlin source. MFCQI does not yet
+  de-duplicate `expect`/`actual` declarations.
+- The LLM tool-output collector is JavaParser-based. Pure Kotlin analysis sends metric scores but
+  does not yet provide Kotlin-specific per-finding file and line context to the recommendation
+  model.
 
-`mfcqi-kotlin` is published to **Maven Central** like the other modules — no extra repositories
-needed. Its Kotlin parser (kotlinx-ast, which is JitPack-only) is **shaded into the artifact**, and
-the POM lists only Central-resolvable dependencies, so consumers don't need to add JitPack:
+## Library use
+
+`mfcqi-kotlin` is published to Maven Central and depends on `pmd-kotlin`; no additional repository
+is required.
 
 ```kotlin
-repositories { mavenCentral() }            // no JitPack required
+repositories { mavenCentral() }
 dependencies { implementation("com.integrallis:mfcqi-kotlin:<version>") }
 ```
 
 ```java
-double avg  = new KotlinCyclomaticComplexity().extract(path);   // analyze a .kt/.kts tree
-double norm = new KotlinCyclomaticComplexity().normalize(avg);  // [0,1]
+double average = new KotlinCyclomaticComplexity().extract(path);
+double normalized = new KotlinCyclomaticComplexity().normalize(average);
+
+List<Metric<?>> fullSuite = KotlinMetrics.all();
 ```
 
-## Roadmap
+## Remaining work
 
-- Ground LLM recommendations with a Kotlin tool-output collector (real per-function findings).
-- Port more metrics: Documentation Coverage (KDoc), Cognitive Complexity, and the OO metrics
-  (RFC, DIT, MHF, CBO, LCOM) with Kotlin-aware semantics.
-- KMP awareness: per-source-set discovery and `expect`/`actual` de-duplication.
-- Optional JVM-only high-fidelity parser mode (Kotlin compiler / PSI) for metrics that need precise
-  comment attachment or type resolution.
+- Add a Kotlin-specific tool-output collector for grounded LLM recommendations.
+- Add KMP source-set awareness and `expect`/`actual` de-duplication.
+- Expand real-repository calibration fixtures as Kotlin syntax and PMD evolve.

@@ -35,15 +35,10 @@ Homebrew/Scoop manifests.
 | Homebrew formula | `integrallis/homebrew-tap` | `native.yml` → `publish-packages` |
 | Scoop manifest | `integrallis/scoop-bucket` | `native.yml` → `publish-packages` |
 
-The CLI is **not** published to Maven Central — only the libraries are. `mfcqi-kotlin` **is**
-published, as a **shaded jar**: its Kotlin parser (`kotlinx-ast` + the ANTLR-Kotlin runtime) is only
-on JitPack, so the Shadow plugin bundles just those `com.github.*` jars into the artifact and the
-published POM lists only Central-resolvable dependencies (kotlin-stdlib, kotlin-reflect,
-`com.benasher44:uuid`, slf4j, `mfcqi-core`). Gradle Module Metadata is disabled for that module so it
-can't re-advertise the JitPack coordinates. The shaded publication is defined in
-`mfcqi-kotlin/build.gradle.kts` and stages into the same `build/staging-deploy` directory, so
-`./gradlew build publish` + JReleaser deploy it like any other library. (Kotlin support also ships
-inside every CLI distribution, which bundles the module directly.)
+The CLI is **not** published to Maven Central — only the libraries are. `mfcqi-kotlin` is a standard
+library publication and declares PMD's Maven Central-hosted `pmd-kotlin` artifact as a runtime
+dependency. It stages into `build/staging-deploy` with the other modules. Kotlin support also ships
+inside every CLI distribution and is verified by the GraalVM native build.
 
 > **Build note:** `mfcqi-kotlin` compiles on a **JDK 21 toolchain** (`jvmToolchain(21)`). CI runners
 > that build on JDK 25 (`build.yml`, `early-access.yml`) also install 21; the
