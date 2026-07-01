@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         brew:   { copy: 'brew install integrallis/tap/mfcqi', show: 'brew install integrallis/tap/mfcqi', prompt: true },
         script: { copy: 'curl -fsSL https://raw.githubusercontent.com/integrallis/mfcqi-java/main/install.sh | sh', show: 'curl -fsSL https://raw.githubusercontent.com/integrallis/mfcqi-java/main/install.sh | sh', prompt: true },
         scoop:  { copy: 'scoop bucket add integrallis https://github.com/integrallis/scoop-bucket; scoop install mfcqi', show: 'scoop install mfcqi', prompt: true },
-        maven:  { copy: 'implementation("com.integrallis:mfcqi-core:0.3.0")', show: 'implementation("com.integrallis:mfcqi-core:0.3.0")', prompt: false },
+        maven:  { copy: 'implementation("com.integrallis:mfcqi-core:0.5.0")', show: 'implementation("com.integrallis:mfcqi-core:0.5.0")', prompt: false },
     };
     const tabs = document.querySelectorAll('.install-tab');
     const cmdText = document.getElementById('install-text');
