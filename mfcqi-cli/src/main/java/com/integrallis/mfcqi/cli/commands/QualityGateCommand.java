@@ -1,7 +1,7 @@
 package com.integrallis.mfcqi.cli.commands;
 
-import com.integrallis.mfcqi.cli.MFCQIDefaults;
 import com.integrallis.mfcqi.core.MFCQICalculator;
+import com.integrallis.mfcqi.engine.MFCQIDefaults;
 import com.integrallis.mfcqi.qualitygates.QualityGateConfig;
 import com.integrallis.mfcqi.qualitygates.QualityGateEvaluator;
 import com.integrallis.mfcqi.qualitygates.QualityGateResult;

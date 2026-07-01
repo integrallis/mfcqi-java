@@ -1,4 +1,4 @@
-package com.integrallis.mfcqi.cli;
+package com.integrallis.mfcqi.engine;
 
 import com.integrallis.mfcqi.core.JavaSourceFiles;
 import com.integrallis.mfcqi.core.MFCQICalculator;

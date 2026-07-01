@@ -16,7 +16,7 @@ allprojects {
 
 // Published to Maven Central as libraries via this shared configuration. The CLI ships as a native
 // binary / runnable distribution instead.
-val nonPublished = setOf("mfcqi-cli")
+val nonPublished = setOf("mfcqi-cli", "mfcqi-gradle-plugin")
 val libraryProjects = subprojects.filterNot { it.name in nonPublished }
 
 // ---------------------------------------------------------------------------

@@ -17,6 +17,8 @@ include("mfcqi-analysis")
 include("mfcqi-quality-gates")
 include("mfcqi-badge")
 include("mfcqi-kotlin")
+include("mfcqi-engine")
+include("mfcqi-gradle-plugin")
 include("mfcqi-cli")
 
 buildCache {

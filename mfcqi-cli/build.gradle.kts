@@ -43,6 +43,7 @@ distributions {
 
 dependencies {
     "implementation"(project(":mfcqi-core"))
+    "implementation"(project(":mfcqi-engine"))
     "implementation"(project(":mfcqi-metrics"))
     "implementation"(project(":mfcqi-kotlin"))
     "implementation"(project(":mfcqi-duplication"))

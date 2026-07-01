@@ -1,4 +1,4 @@
-package com.integrallis.mfcqi.cli;
+package com.integrallis.mfcqi.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

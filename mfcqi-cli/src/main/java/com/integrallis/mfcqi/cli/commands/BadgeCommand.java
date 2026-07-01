@@ -2,7 +2,7 @@ package com.integrallis.mfcqi.cli.commands;
 
 import com.integrallis.mfcqi.badge.BadgeGenerator;
 import com.integrallis.mfcqi.badge.BadgeStyle;
-import com.integrallis.mfcqi.cli.MFCQIDefaults;
+import com.integrallis.mfcqi.engine.MFCQIDefaults;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;

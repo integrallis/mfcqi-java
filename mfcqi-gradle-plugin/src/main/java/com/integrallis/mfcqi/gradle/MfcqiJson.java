@@ -1,0 +1,30 @@
+package com.integrallis.mfcqi.gradle;
+
+import java.util.Locale;
+import java.util.Map;
+
+/** Minimal JSON serialization for the metric map (avoids a Jackson dependency in the plugin). */
+final class MfcqiJson {
+
+  private MfcqiJson() {}
+
+  static String of(Map<String, Double> metrics) {
+    StringBuilder sb = new StringBuilder("{\n");
+    int i = 0;
+    for (Map.Entry<String, Double> entry : metrics.entrySet()) {
+      sb.append("  \"")
+          .append(escape(entry.getKey()))
+          .append("\": ")
+          .append(String.format(Locale.ROOT, "%.6f", entry.getValue()));
+      if (++i < metrics.size()) {
+        sb.append(',');
+      }
+      sb.append('\n');
+    }
+    return sb.append("}\n").toString();
+  }
+
+  private static String escape(String value) {
+    return value.replace("\\", "\\\\").replace("\"", "\\\"");
+  }
+}
