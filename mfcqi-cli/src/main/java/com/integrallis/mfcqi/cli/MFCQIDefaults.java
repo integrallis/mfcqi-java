@@ -1,5 +1,6 @@
 package com.integrallis.mfcqi.cli;
 
+import com.integrallis.mfcqi.core.JavaSourceFiles;
 import com.integrallis.mfcqi.core.MFCQICalculator;
 import com.integrallis.mfcqi.core.Metric;
 import com.integrallis.mfcqi.depssecurity.DependencySecurityMetric;
@@ -18,6 +19,8 @@ import com.integrallis.mfcqi.metrics.RFCMetric;
 import com.integrallis.mfcqi.secrets.SecretsExposureMetric;
 import com.integrallis.mfcqi.security.SecurityMetric;
 import com.integrallis.mfcqi.smells.CodeSmellDensity;
+import java.nio.file.Path;
+import java.util.List;
 
 /**
  * Factory that wires every metric into a default-configured {@link MFCQICalculator}. Java is an
@@ -43,31 +46,12 @@ public final class MFCQIDefaults {
 
   /** Build a {@link MFCQICalculator} with the default metric registry and worker count. */
   public static MFCQICalculator calculator(int parallelism) {
-    return MFCQICalculator.builder()
-        .parallelism(parallelism)
-        .addMetric(new CyclomaticComplexity())
-        .addMetric(new CognitiveComplexity())
-        .addMetric(new HalsteadVolume())
-        .addMetric(new MaintainabilityIndex())
-        .addMetric(new CodeDuplication())
-        .addMetric(new DocumentationCoverage())
-        .addMetric(new SecurityMetric())
-        .addMetric(new DependencySecurityMetric())
-        .addMetric(new SecretsExposureMetric())
-        .addMetric(CodeSmellDensity.withDefaultDetectors())
-        .addMetric(new RFCMetric())
-        .addMetric(new DITMetric())
-        .addMetric(new MHFMetric())
-        .addMetric(new CouplingBetweenObjects())
-        .addMetric(new LackOfCohesionOfMethods())
-        .build();
+    MFCQICalculator.Builder builder = MFCQICalculator.builder().parallelism(parallelism);
+    javaSourceMetrics().forEach(builder::addMetric);
+    return addSharedMetrics(builder).build();
   }
 
-  /**
-   * Build a {@link MFCQICalculator} for Kotlin codebases: the Kotlin AST metrics (v1: Cyclomatic
-   * Complexity) plus the language-neutral secrets scan, with a Kotlin source detector so a pure
-   * {@code .kt} codebase isn't treated as empty. The Java AST metrics don't apply to Kotlin.
-   */
+  /** Build a {@link MFCQICalculator} for Kotlin codebases with the same metric contract as Java. */
   public static MFCQICalculator kotlinCalculator() {
     return kotlinCalculator(1);
   }
@@ -79,9 +63,103 @@ public final class MFCQIDefaults {
     for (Metric<?> metric : KotlinMetrics.all()) {
       builder.addMetric(metric);
     }
-    return builder
-        .addMetric(new SecretsExposureMetric()) // language-neutral (handles .kt/.kts)
-        .analyzableSource(KotlinMetrics::hasSource)
+    return addSharedMetrics(builder).analyzableSource(KotlinMetrics::hasSource).build();
+  }
+
+  /** Build a calculator that combines corresponding Java and Kotlin source metrics. */
+  public static MFCQICalculator mixedCalculator() {
+    return mixedCalculator(1);
+  }
+
+  /** Build a mixed-language calculator with the requested worker count. */
+  public static MFCQICalculator mixedCalculator(int parallelism) {
+    List<Metric<?>> javaMetrics = javaSourceMetrics();
+    List<Metric<?>> kotlinMetrics = KotlinMetrics.all();
+    if (javaMetrics.size() != kotlinMetrics.size()) {
+      throw new IllegalStateException("Java and Kotlin metric registries are not aligned");
+    }
+
+    MFCQICalculator.Builder builder = MFCQICalculator.builder().parallelism(parallelism);
+    for (int i = 0; i < javaMetrics.size(); i++) {
+      Metric<?> javaMetric = javaMetrics.get(i);
+      Metric<?> kotlinMetric = kotlinMetrics.get(i);
+      if (!javaMetric.getName().equals(kotlinMetric.getName())) {
+        throw new IllegalStateException(
+            "Metric registry mismatch: " + javaMetric.getName() + " != " + kotlinMetric.getName());
+      }
+      builder.addMetric(new CombinedMetric(javaMetric, kotlinMetric));
+    }
+    return addSharedMetrics(builder)
+        .analyzableSource(
+            path -> !JavaSourceFiles.findAll(path).isEmpty() || KotlinMetrics.hasSource(path))
         .build();
+  }
+
+  /** Auto-select Java, Kotlin, or mixed analysis from source files under {@code path}. */
+  public static MFCQICalculator calculatorFor(Path path, int parallelism) {
+    boolean java = !JavaSourceFiles.findAll(path).isEmpty();
+    boolean kotlin = KotlinMetrics.hasSource(path);
+    if (java && kotlin) {
+      return mixedCalculator(parallelism);
+    }
+    return kotlin ? kotlinCalculator(parallelism) : calculator(parallelism);
+  }
+
+  /** Auto-select Java, Kotlin, or mixed analysis with serial metric execution. */
+  public static MFCQICalculator calculatorFor(Path path) {
+    return calculatorFor(path, 1);
+  }
+
+  private static List<Metric<?>> javaSourceMetrics() {
+    return List.of(
+        new CyclomaticComplexity(),
+        new CognitiveComplexity(),
+        new HalsteadVolume(),
+        new MaintainabilityIndex(),
+        new CodeDuplication(),
+        new DocumentationCoverage(),
+        new SecurityMetric(),
+        CodeSmellDensity.withDefaultDetectors(),
+        new RFCMetric(),
+        new DITMetric(),
+        new MHFMetric(),
+        new CouplingBetweenObjects(),
+        new LackOfCohesionOfMethods());
+  }
+
+  private static MFCQICalculator.Builder addSharedMetrics(MFCQICalculator.Builder builder) {
+    return builder.addMetric(new DependencySecurityMetric()).addMetric(new SecretsExposureMetric());
+  }
+
+  private static final class CombinedMetric extends Metric<Double> {
+    private final Metric<?> javaMetric;
+    private final Metric<?> kotlinMetric;
+
+    private CombinedMetric(Metric<?> javaMetric, Metric<?> kotlinMetric) {
+      this.javaMetric = javaMetric;
+      this.kotlinMetric = kotlinMetric;
+    }
+
+    @Override
+    public Double extract(Path codebase) {
+      return (javaMetric.calculate(codebase).normalizedValue()
+              + kotlinMetric.calculate(codebase).normalizedValue())
+          / 2.0;
+    }
+
+    @Override
+    public double normalize(Double value) {
+      return value == null ? 0.0 : value;
+    }
+
+    @Override
+    public double getWeight() {
+      return javaMetric.getWeight();
+    }
+
+    @Override
+    public String getName() {
+      return javaMetric.getName();
+    }
   }
 }

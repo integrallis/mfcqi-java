@@ -6,6 +6,7 @@ import com.integrallis.mfcqi.core.MFCQICalculator;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -66,5 +67,37 @@ class MFCQIDefaultsTest {
     Files.writeString(src.resolve("X.java"), "public class X { public int v() { return 1; } }");
     double score = MFCQIDefaults.calculator().calculate(tmp);
     assertThat(score).isBetween(0.0, 1.0);
+  }
+
+  @Test
+  void kotlinCalculator_hasTheSameMetricContractAsJava(@TempDir Path tmp) throws Exception {
+    Path javaSrc = Files.createDirectories(tmp.resolve("java"));
+    Files.writeString(
+        javaSrc.resolve("Sample.java"), "public class Sample { int value() { return 1; } }");
+    Path kotlinSrc = Files.createDirectories(tmp.resolve("kotlin"));
+    Files.writeString(kotlinSrc.resolve("Sample.kt"), "class Sample { fun value(): Int = 1 }");
+
+    Set<String> javaMetrics = MFCQIDefaults.calculator().detailedMetrics(javaSrc).keySet();
+    Set<String> kotlinMetrics =
+        MFCQIDefaults.kotlinCalculator().detailedMetrics(kotlinSrc).keySet();
+
+    assertThat(kotlinMetrics).containsExactlyInAnyOrderElementsOf(javaMetrics);
+    assertThat(kotlinMetrics).hasSize(16); // 15 metrics plus mfcqi_score
+  }
+
+  @Test
+  void mixedCalculator_analyzesBothLanguagesUnderOneMetricContract(@TempDir Path tmp)
+      throws Exception {
+    Files.writeString(
+        tmp.resolve("Sample.java"), "public class Sample { int value() { return 1; } }");
+    Files.writeString(
+        tmp.resolve("Complex.kt"),
+        "fun complex(x: Int) = if (x > 0 && x < 10) x else if (x < -10) -x else 0");
+
+    Map<String, Double> detail = MFCQIDefaults.mixedCalculator().detailedMetrics(tmp);
+
+    assertThat(detail.keySet()).hasSize(16);
+    assertThat(detail).containsKeys("Cyclomatic Complexity", "Cognitive Complexity", "security");
+    assertThat(detail.get("Cyclomatic Complexity")).isLessThan(1.0);
   }
 }

@@ -142,7 +142,8 @@ public final class AnalyzeCommand implements Callable<Integer> {
   enum Language {
     AUTO,
     JAVA,
-    KOTLIN
+    KOTLIN,
+    MIXED
   }
 
   /** Set in {@link #call()} once the language is resolved; drives LLM tool-output collection. */
@@ -171,14 +172,24 @@ public final class AnalyzeCommand implements Callable<Integer> {
     boolean explicitlyRequestedLlm = (model != null && !model.isEmpty()) || provider != null;
     boolean shouldSkipLlm = skipLlm || !explicitlyRequestedLlm;
 
-    kotlinMode = resolveKotlin(path);
-    if (kotlinMode && !silent) {
-      System.err.println("Analyzing as Kotlin (v1: cyclomatic complexity + secrets).");
+    Language resolvedLanguage = resolveLanguage(path);
+    kotlinMode = resolvedLanguage == Language.KOTLIN;
+    if (!silent && resolvedLanguage != Language.JAVA) {
+      System.err.println("Analyzing as " + resolvedLanguage.name().toLowerCase(Locale.ROOT) + ".");
     }
-    MFCQICalculator calculator =
-        kotlinMode
-            ? MFCQIDefaults.kotlinCalculator(parallelism)
-            : MFCQIDefaults.calculator(parallelism);
+    MFCQICalculator calculator;
+    switch (resolvedLanguage) {
+      case KOTLIN:
+        calculator = MFCQIDefaults.kotlinCalculator(parallelism);
+        break;
+      case MIXED:
+        calculator = MFCQIDefaults.mixedCalculator(parallelism);
+        break;
+      case JAVA:
+      default:
+        calculator = MFCQIDefaults.calculator(parallelism);
+        break;
+    }
     Map<String, Double> detailed = calculator.detailedMetrics(path);
     double score = detailed.getOrDefault("mfcqi_score", 0.0);
 
@@ -202,17 +213,23 @@ public final class AnalyzeCommand implements Callable<Integer> {
     return 0;
   }
 
-  /** Decide whether to analyze as Kotlin: explicit flag, or auto-detect Kotlin-only codebases. */
-  private boolean resolveKotlin(Path target) {
+  /** Resolve explicit language selection or auto-detect Java, Kotlin, and mixed codebases. */
+  private Language resolveLanguage(Path target) {
     switch (language) {
       case KOTLIN:
-        return true;
+        return Language.KOTLIN;
       case JAVA:
-        return false;
+        return Language.JAVA;
+      case MIXED:
+        return Language.MIXED;
       case AUTO:
       default:
-        // Mixed or Java codebases use the richer Java metric set; pure Kotlin uses the Kotlin path.
-        return KotlinMetrics.hasSource(target) && !hasJavaSource(target);
+        boolean java = hasJavaSource(target);
+        boolean kotlin = KotlinMetrics.hasSource(target);
+        if (java && kotlin) {
+          return Language.MIXED;
+        }
+        return kotlin ? Language.KOTLIN : Language.JAVA;
     }
   }
 
@@ -255,7 +272,7 @@ public final class AnalyzeCommand implements Callable<Integer> {
             : Spinner.start(
                 "Querying " + cfg.model() + " for recommendations (may take a while)...");
     try {
-      // ToolOutputCollector is JavaParser-based; Kotlin v1 sends metric scores without tool output.
+      // ToolOutputCollector is JavaParser-based; pure Kotlin sends scores without raw tool output.
       ToolOutputs toolOutputs =
           kotlinMode ? ToolOutputs.empty() : ToolOutputCollector.collect(path, metrics);
       return engine.analyze(path.toString(), metrics, toolOutputs, recommendationCount, cfg);

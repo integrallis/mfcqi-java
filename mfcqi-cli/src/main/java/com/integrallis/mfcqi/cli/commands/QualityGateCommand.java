@@ -45,7 +45,7 @@ public final class QualityGateCommand implements Callable<Integer> {
           discovered.map(QualityGateConfig::fromFile).orElseGet(QualityGateConfig::fromDefaults);
     }
 
-    MFCQICalculator calc = MFCQIDefaults.calculator();
+    MFCQICalculator calc = MFCQIDefaults.calculatorFor(path);
     Map<String, Double> detailed = calc.detailedMetrics(path);
     double overall = detailed.getOrDefault("mfcqi_score", 0.0);
     Map<String, Double> metricScores = new LinkedHashMap<>(detailed);

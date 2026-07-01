@@ -257,6 +257,44 @@ class AnalyzeCommandTest {
   }
 
   @Test
+  void cli_autoDetectsKotlinAndRunsTheFullMetricContract(@TempDir Path tmp) throws Exception {
+    Files.writeString(
+        tmp.resolve("Sample.kt"),
+        "/** Sample. */ class Sample { /** Value. */ fun value(x: Int) = if (x > 0) x else 0 }");
+
+    int code =
+        new CommandLine(new Main())
+            .execute("analyze", "--skip-llm", "--format", "json", tmp.toString());
+
+    assertThat(code).isZero();
+    assertThat(stdout.toString(StandardCharsets.UTF_8))
+        .contains("\"Cyclomatic Complexity\"")
+        .contains("\"Cognitive Complexity\"")
+        .contains("\"Dependency Security\"")
+        .contains("\"Lack of Cohesion of Methods\"");
+  }
+
+  @Test
+  void cli_autoDetectsMixedSources(@TempDir Path tmp) throws Exception {
+    Files.writeString(
+        tmp.resolve("Sample.java"), "public class Sample { int value() { return 1; } }");
+    Files.writeString(
+        tmp.resolve("Complex.kt"),
+        "fun complex(x: Int) = if (x > 0 && x < 10) x else if (x < -10) -x else 0");
+
+    int code =
+        new CommandLine(new Main())
+            .execute("analyze", "--skip-llm", "--format", "terminal", tmp.toString());
+
+    assertThat(code).isZero();
+    assertThat(stderr.toString(StandardCharsets.UTF_8)).contains("Analyzing as mixed.");
+    assertThat(stdout.toString(StandardCharsets.UTF_8))
+        .contains("Cyclomatic Complexity")
+        .contains("Cognitive Complexity")
+        .contains("Dependency Security");
+  }
+
+  @Test
   void cli_parallelismRejectsNonPositiveValue(@TempDir Path tmp) throws Exception {
     Path src = Files.createDirectories(tmp.resolve("src/main/java"));
     Files.writeString(src.resolve("X.java"), "public class X { public int v() { return 1; } }");

@@ -43,7 +43,7 @@ public final class BadgeCommand implements Callable<Integer> {
 
   @Override
   public Integer call() {
-    double score = MFCQIDefaults.calculator().calculate(path);
+    double score = MFCQIDefaults.calculatorFor(path).calculate(path);
     BadgeStyle style = parseStyle(styleName);
     String artifact;
     switch (format.toLowerCase(Locale.ROOT)) {
