@@ -15,18 +15,21 @@ That run publishes every automated artifact:
 
 ```
 Release (dry_run off)
-  → JReleaser deploy            → Maven Central (the 10 library modules)
-  → gh release create           → GitHub release + JVM zip/tar (mfcqi-<version>.zip/.tar)
+  → JReleaser deploy            → Maven Central (the 11 library modules)
+  → gh release create           → GitHub prerelease + JVM zip/tar (mfcqi-<version>.zip/.tar)
   → dispatch native.yml         → linux-x64 / macos-arm64 / windows-x64 native binaries → attached
        → publish-packages       → Homebrew tap + Scoop bucket bumped to the new version
+  → build-macos-intel.sh        → macos-x64 → Homebrew install test → promote final release
 ```
 
 The version flows automatically into Maven coordinates, `--version`, the SARIF report, the JVM
 dist filenames, the native-binary release assets, the auto-created `v<version>` tag, and the
 Homebrew/Scoop manifests.
 
-After `native.yml` finishes, run `scripts/build-macos-intel.sh v<version>` on an Intel Mac. It
-builds and uploads the Intel binary, then adds its verified checksum to the Homebrew formula.
+After `native.yml` finishes, run `scripts/build-macos-intel.sh v<version>` on an Intel Mac. A
+release remains marked as a prerelease until this required final step builds and uploads the Intel
+binary, passes the real-repository smoke suite, updates the formula, passes a fresh Homebrew
+install/test, and promotes the release.
 
 ## What gets published where
 
@@ -60,8 +63,8 @@ inside every CLI distribution and is verified by the GraalVM native build.
 | `native.yml` | manual + `release: published` | build native binaries per platform, attach them, publish Homebrew/Scoop |
 
 `release.yml` inputs: `dry_run` (default **true** — validate only) and `skip_deploy` (re-create only
-the GitHub release without re-deploying to Central). `native.yml` inputs: `tag` (release to upload
-to) and `ref` (git ref to build from; defaults to the tag).
+the GitHub prerelease without re-deploying to Central). `native.yml` inputs: `tag` (release to
+upload to) and `ref` (git ref to build from; defaults to the tag).
 
 ## Required secrets
 
@@ -123,7 +126,8 @@ covers linux-x64 (ubuntu), macos-arm64 (macos-14), and windows-x64. **macOS Inte
 (GitHub Intel-mac runners are scarce/unreliable); after `native.yml` finishes, a maintainer builds
 it on Intel hardware with [`scripts/build-macos-intel.sh`](scripts/build-macos-intel.sh). The script
 uploads the binary and updates the Homebrew tap, after which Homebrew, `install.sh`, and direct
-download all serve it. Intel-mac users can otherwise use the JVM zip.
+download all serve it. It then verifies a fresh Homebrew installation on Intel before promoting
+the prerelease to a final release. Intel-mac users can otherwise use the JVM zip.
 
 ### Regenerating the native-image config
 
@@ -160,5 +164,8 @@ from `gradle.properties` at deploy time, and re-publishes on `release: published
   recreate only the GitHub release (Central is already done; re-deploying would collide).
 - **`native.yml` didn't auto-fire?** Check `PACKAGES_PUBLISH_TOKEN` has **Actions: write** on this
   repo; otherwise dispatch `native.yml` manually with the tag.
+- **Release still marked as a prerelease?** The Intel build/Homebrew verification has not completed;
+  run `scripts/build-macos-intel.sh v<version>` on the Intel release machine and fix any failure
+  before promoting it.
 - **Logs:** `release.yml` uploads `jreleaser-logs` (with `out/jreleaser/trace.log`) as a run
   artifact on failure.

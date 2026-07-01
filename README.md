@@ -355,9 +355,9 @@ cp .env.example .env
 
 ### Releasing & CI
 
-Cutting a release (Maven Central + GitHub binaries + Homebrew/Scoop) is a single automated
-workflow. The full process, CI workflow reference, required secrets, GraalVM native-image build,
-and distribution setup are documented in **[RELEASING.md](RELEASING.md)**.
+Release automation publishes Maven Central, the cross-platform binaries, Homebrew, and Scoop. The
+Intel macOS build and Homebrew installation are verified on Intel hardware before the prerelease is
+promoted. The full process is documented in **[RELEASING.md](RELEASING.md)**.
 
 ## Expected Score Ranges
 

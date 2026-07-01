@@ -88,10 +88,11 @@ jobs:
           JRELEASER_GPG_SECRET_KEY: ${{ secrets.GPG_SECRET_KEY }}
           JRELEASER_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
-      # ---------- REAL RELEASE step 2: GitHub release with CLI distribution (gh) ----------
+      # ---------- REAL RELEASE step 2: GitHub prerelease with CLI distribution (gh) ----------
       # Decoupled from the Maven deploy on purpose, and idempotent: creating tags + the release if
       # absent, or just refreshing the attached archives if the release already exists. Re-running
-      # with skip_deploy=true recreates the release without touching Maven Central.
+      # with skip_deploy=true recreates the release without touching Maven Central. The Intel-mac
+      # release script promotes the prerelease only after its Homebrew install test passes.
       - name: Publish GitHub Release
         if: ${{ !inputs.dry_run }}
         env:
@@ -108,6 +109,7 @@ jobs:
             gh release create "$TAG" \
               --target "$GITHUB_SHA" \
               --title "mfcqi-java $VERSION" \
+              --prerelease \
               --generate-notes \
               "$ZIP" "$TAR"
           fi

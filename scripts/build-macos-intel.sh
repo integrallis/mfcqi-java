@@ -10,6 +10,7 @@
 #   - This repo, checked out at the release tag you are building for.
 #   - A GraalVM JDK (e.g. `sdk install java 21.0.2-graalce`) on JAVA_HOME or PATH.
 #   - GitHub CLI (`gh`) authenticated with write access to this repo and integrallis/homebrew-tap.
+#   - Homebrew.
 #   - The native workflow for the release has finished publishing the initial Homebrew formula.
 #
 # Usage:
@@ -37,11 +38,37 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v brew >/dev/null 2>&1; then
+  echo "Homebrew is required to verify the published Intel formula." >&2
+  exit 1
+fi
+
 VERSION="$(sed -E 's/.*=[[:space:]]*//' gradle.properties)"
 TAG="${1:-v$VERSION}"
 ASSET="mfcqi-macos-x86_64"
 TAP_DIR="$(mktemp -d)/homebrew-tap"
 trap 'rm -rf "$(dirname "$TAP_DIR")"' EXIT
+
+if [ "$(git rev-parse HEAD)" != "$(git rev-list -n 1 "$TAG")" ]; then
+  echo "Check out $TAG before building its Intel binary." >&2
+  exit 1
+fi
+
+echo "Checking automated release assets and Homebrew formula..."
+RELEASE_ASSETS="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
+for required in mfcqi-linux-x86_64 mfcqi-macos-aarch64 mfcqi-windows-x86_64.exe; do
+  if ! grep -Fxq "$required" <<<"$RELEASE_ASSETS"; then
+    echo "Release $TAG is missing $required; wait for the native workflow to finish." >&2
+    exit 1
+  fi
+done
+
+gh repo clone integrallis/homebrew-tap "$TAP_DIR" -- --depth 1
+FORMULA="$TAP_DIR/Formula/mfcqi.rb"
+if ! grep -Fq "version \"$VERSION\"" "$FORMULA"; then
+  echo "Homebrew formula is not at $VERSION; wait for the native workflow to finish." >&2
+  exit 1
+fi
 
 echo "Building $ASSET for $TAG (version $VERSION)..."
 ./gradlew :mfcqi-cli:nativeCompile --no-daemon
@@ -49,15 +76,16 @@ echo "Building $ASSET for $TAG (version $VERSION)..."
 cp mfcqi-cli/build/native/nativeCompile/mfcqi "$ASSET"
 strip "$ASSET" || true
 echo "Built: $(./"$ASSET" --version)"
+MFCQI_BIN="$PWD/$ASSET" MFCQI_PARALLELISM="${MFCQI_PARALLELISM:-4}" \
+  scripts/smoke-real-repos.sh
 
 echo "Uploading $ASSET to release $TAG..."
 gh release upload "$TAG" "$ASSET" --clobber
 
 echo "Adding $ASSET to the Homebrew formula..."
 SHA_MAC_INTEL="$(shasum -a 256 "$ASSET" | awk '{print $1}')"
-gh repo clone integrallis/homebrew-tap "$TAP_DIR" -- --depth 1
 
-FORMULA="$TAP_DIR/Formula/mfcqi.rb" VERSION="$VERSION" TAG="$TAG" \
+FORMULA="$FORMULA" VERSION="$VERSION" TAG="$TAG" \
   SHA_MAC_INTEL="$SHA_MAC_INTEL" ruby <<'RUBY_SCRIPT'
 path = ENV.fetch("FORMULA")
 version = ENV.fetch("VERSION")
@@ -74,12 +102,34 @@ intel = <<~FORMULA.chomp.lines(chomp: true).map { |line| "    #{line}" }.join("\
     sha256 "#{sha}"
   end
 FORMULA
-abort "Homebrew formula does not contain the expected Intel placeholder" unless formula.sub!(marker, intel)
+existing_intel = %r{    on_intel do\n      url "[^"]+/mfcqi-macos-x86_64"\n      sha256 "[0-9a-f]+"\n    end}
+unless formula.sub!(marker, intel) || formula.sub!(existing_intel, intel)
+  abort "Homebrew formula does not contain the expected Intel placeholder or block"
+end
 File.write(path, formula)
 RUBY_SCRIPT
 
 git -C "$TAP_DIR" add Formula/mfcqi.rb
-git -C "$TAP_DIR" commit -m "mfcqi $VERSION"
-git -C "$TAP_DIR" push
+if git -C "$TAP_DIR" diff --cached --quiet; then
+  echo "Homebrew formula already contains the verified Intel checksum."
+else
+  git -C "$TAP_DIR" commit -m "mfcqi $VERSION"
+  git -C "$TAP_DIR" push
+fi
 
-echo "Done. Intel-mac users can now install mfcqi with Homebrew, install.sh, or direct download."
+echo "Verifying a fresh Homebrew installation..."
+brew update
+if brew list --versions mfcqi >/dev/null 2>&1; then
+  brew reinstall integrallis/tap/mfcqi
+else
+  brew install integrallis/tap/mfcqi
+fi
+brew test integrallis/tap/mfcqi
+
+BREW_MFCQI="$(brew --prefix mfcqi)/bin/mfcqi"
+file "$BREW_MFCQI" | grep -Fq "x86_64"
+"$BREW_MFCQI" --version | grep -Fq "mfcqi-java $VERSION"
+
+echo "Promoting $TAG from prerelease to final..."
+gh release edit "$TAG" --prerelease=false --latest
+echo "Done. Intel-mac users can install mfcqi with Homebrew, install.sh, or direct download."
