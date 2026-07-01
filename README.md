@@ -55,7 +55,8 @@ curl -fsSL https://raw.githubusercontent.com/integrallis/mfcqi-java/main/install
 
 Grab the binary for your platform from the
 [latest release](https://github.com/integrallis/mfcqi-java/releases/latest) —
-`mfcqi-linux-x86_64`, `mfcqi-macos-aarch64`, or `mfcqi-windows-x86_64.exe`:
+`mfcqi-linux-x86_64`, `mfcqi-macos-aarch64`, `mfcqi-macos-x86_64`, or
+`mfcqi-windows-x86_64.exe`:
 
 ```bash
 curl -fsSL -o mfcqi https://github.com/integrallis/mfcqi-java/releases/latest/download/mfcqi-linux-x86_64
@@ -64,8 +65,8 @@ chmod +x mfcqi && ./mfcqi analyze .
 
 #### JVM distribution (any platform, needs a JRE 11+)
 
-For platforms without a native binary (e.g. Intel macOS or Linux arm64), each release also ships a
-JVM distribution that runs on any JRE 11+:
+For platforms without a native binary (e.g. Linux arm64), each release also ships a JVM
+distribution that runs on any JRE 11+:
 
 ```bash
 # download mfcqi-<version>.zip (or .tar) from the release, then (e.g. 0.2.0):
@@ -76,7 +77,7 @@ unzip mfcqi-0.2.0.zip
 > Intel-macOS native binary: GraalVM can't cross-compile it and GitHub lacks reliable Intel-mac
 > runners, so it's built on demand by a maintainer on Intel hardware via
 > [`scripts/build-macos-intel.sh`](scripts/build-macos-intel.sh) and attached to the release; once
-> present, `install.sh` and direct download serve it automatically.
+> present, Homebrew, `install.sh`, and direct download serve it automatically.
 
 #### Build from source
 

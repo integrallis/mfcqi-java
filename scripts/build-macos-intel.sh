@@ -2,14 +2,15 @@
 # Build the macOS Intel (x86_64) native binary on an Intel Mac and upload it to a release.
 #
 # GraalVM native-image cannot cross-compile, and GitHub no longer offers reliable Intel-mac
-# runners, so the Intel-mac binary (if wanted) is built by a maintainer on actual Intel hardware
-# and attached to the release. Once uploaded, `install.sh` and direct download pick it up
-# automatically (Homebrew remains Apple-Silicon-only for macOS).
+# runners, so the Intel-mac binary is built by a maintainer on actual Intel hardware and attached
+# to the release. The script also adds the binary to the Homebrew formula after the automated
+# native workflow publishes the Apple Silicon/Linux formula.
 #
 # Prerequisites on the Intel Mac:
 #   - This repo, checked out at the release tag you are building for.
 #   - A GraalVM JDK (e.g. `sdk install java 21.0.2-graalce`) on JAVA_HOME or PATH.
-#   - GitHub CLI (`gh`) authenticated with write access to the repo.
+#   - GitHub CLI (`gh`) authenticated with write access to this repo and integrallis/homebrew-tap.
+#   - The native workflow for the release has finished publishing the initial Homebrew formula.
 #
 # Usage:
 #   scripts/build-macos-intel.sh [tag]
@@ -39,6 +40,8 @@ fi
 VERSION="$(sed -E 's/.*=[[:space:]]*//' gradle.properties)"
 TAG="${1:-v$VERSION}"
 ASSET="mfcqi-macos-x86_64"
+TAP_DIR="$(mktemp -d)/homebrew-tap"
+trap 'rm -rf "$(dirname "$TAP_DIR")"' EXIT
 
 echo "Building $ASSET for $TAG (version $VERSION)..."
 ./gradlew :mfcqi-cli:nativeCompile --no-daemon
@@ -49,4 +52,34 @@ echo "Built: $(./"$ASSET" --version)"
 
 echo "Uploading $ASSET to release $TAG..."
 gh release upload "$TAG" "$ASSET" --clobber
-echo "Done. Intel-mac users can now: curl -fsSL .../install.sh | sh  (or download $ASSET directly)."
+
+echo "Adding $ASSET to the Homebrew formula..."
+SHA_MAC_INTEL="$(shasum -a 256 "$ASSET" | awk '{print $1}')"
+gh repo clone integrallis/homebrew-tap "$TAP_DIR" -- --depth 1
+
+FORMULA="$TAP_DIR/Formula/mfcqi.rb" VERSION="$VERSION" TAG="$TAG" \
+  SHA_MAC_INTEL="$SHA_MAC_INTEL" ruby <<'RUBY_SCRIPT'
+path = ENV.fetch("FORMULA")
+version = ENV.fetch("VERSION")
+tag = ENV.fetch("TAG")
+sha = ENV.fetch("SHA_MAC_INTEL")
+formula = File.read(path)
+expected_version = %(version "#{version}")
+abort "Homebrew formula is not at #{version}; wait for the native workflow to finish" unless formula.include?(expected_version)
+
+marker = "    # Intel macOS: no native binary is published; use the JVM distribution or build from source."
+intel = <<~FORMULA.chomp.lines(chomp: true).map { |line| "    #{line}" }.join("\n")
+  on_intel do
+    url "https://github.com/integrallis/mfcqi-java/releases/download/#{tag}/mfcqi-macos-x86_64"
+    sha256 "#{sha}"
+  end
+FORMULA
+abort "Homebrew formula does not contain the expected Intel placeholder" unless formula.sub!(marker, intel)
+File.write(path, formula)
+RUBY_SCRIPT
+
+git -C "$TAP_DIR" add Formula/mfcqi.rb
+git -C "$TAP_DIR" commit -m "mfcqi $VERSION"
+git -C "$TAP_DIR" push
+
+echo "Done. Intel-mac users can now install mfcqi with Homebrew, install.sh, or direct download."

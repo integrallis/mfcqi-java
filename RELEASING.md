@@ -11,7 +11,7 @@ instructions live in the [README](README.md#installation).
    rules, and bundle assembly without publishing anything.
 3. Run **Release** again with **`dry_run` unchecked**.
 
-That one run cascades all the way through — no further manual steps:
+That run publishes every automated artifact:
 
 ```
 Release (dry_run off)
@@ -25,6 +25,9 @@ The version flows automatically into Maven coordinates, `--version`, the SARIF r
 dist filenames, the native-binary release assets, the auto-created `v<version>` tag, and the
 Homebrew/Scoop manifests.
 
+After `native.yml` finishes, run `scripts/build-macos-intel.sh v<version>` on an Intel Mac. It
+builds and uploads the Intel binary, then adds its verified checksum to the Homebrew formula.
+
 ## What gets published where
 
 | Artifact | Destination | Built by |
@@ -32,6 +35,7 @@ Homebrew/Scoop manifests.
 | 11 library modules (`mfcqi-core`, …, `mfcqi-kotlin`) | Maven Central (`com.integrallis`) | `release.yml` (JReleaser) |
 | CLI JVM distribution (`mfcqi-<v>.zip`/`.tar`, needs a JRE) | GitHub release | `release.yml` (`gh`) |
 | CLI native binaries (linux-x64, macos-arm64, windows-x64) | GitHub release | `native.yml` (GraalVM) |
+| CLI native binary (macos-x64) | GitHub release | `scripts/build-macos-intel.sh` (GraalVM) |
 | Homebrew formula | `integrallis/homebrew-tap` | `native.yml` → `publish-packages` |
 | Scoop manifest | `integrallis/scoop-bucket` | `native.yml` → `publish-packages` |
 
@@ -116,9 +120,10 @@ MFCQI_PARALLELISM=4 scripts/smoke-real-repos.sh
 
 GraalVM native-image **cannot cross-compile**, so each binary is built on its own platform. CI
 covers linux-x64 (ubuntu), macos-arm64 (macos-14), and windows-x64. **macOS Intel** is omitted
-(GitHub Intel-mac runners are scarce/unreliable); a maintainer can build it on Intel hardware with
-[`scripts/build-macos-intel.sh`](scripts/build-macos-intel.sh) — once uploaded, `install.sh` and
-direct download serve it automatically. Intel-mac users can otherwise use the JVM zip.
+(GitHub Intel-mac runners are scarce/unreliable); after `native.yml` finishes, a maintainer builds
+it on Intel hardware with [`scripts/build-macos-intel.sh`](scripts/build-macos-intel.sh). The script
+uploads the binary and updates the Homebrew tap, after which Homebrew, `install.sh`, and direct
+download all serve it. Intel-mac users can otherwise use the JVM zip.
 
 ### Regenerating the native-image config
 
