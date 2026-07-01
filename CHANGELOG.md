@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-01
+
 ### Added
 - Kotlin now implements the complete Java metric contract: 13 language-aware source metrics plus
   the shared Dependency Security and Secrets Exposure metrics.
