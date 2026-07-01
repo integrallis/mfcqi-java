@@ -5,9 +5,9 @@ import java.nio.file.Path
 import java.util.stream.Collectors
 
 /**
- * Discovers the `.kt` / `.kts` files to analyze under a codebase, excluding build/IDE/VCS
- * directories. The Kotlin analog of the core `JavaSourceFiles`; kept here so the core stays
- * Java-only until discovery is unified.
+ * Discovers `.kt` source files under a codebase, excluding build/IDE/VCS directories. Kotlin script
+ * files are intentionally excluded: PMD's Kotlin frontend parses Kotlin source grammar, not Gradle
+ * or general `.kts` script grammar.
  */
 internal object KotlinSourceFiles {
 
@@ -49,7 +49,7 @@ internal object KotlinSourceFiles {
 
   private fun isKotlin(path: Path): Boolean {
     val name = path.fileName?.toString() ?: return false
-    return name.endsWith(".kt") || name.endsWith(".kts")
+    return name.endsWith(".kt")
   }
 
   /** Excluded if any path element is a build/IDE/VCS dir or a dotfile (ignoring `.`/`..`). */

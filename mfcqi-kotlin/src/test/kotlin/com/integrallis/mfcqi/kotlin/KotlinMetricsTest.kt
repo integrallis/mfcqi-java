@@ -10,7 +10,23 @@ class KotlinMetricsTest {
 
   @Test
   fun exposesTheKotlinMetricSet() {
-    assertThat(KotlinMetrics.all()).extracting<String> { it.name }.contains("Cyclomatic Complexity")
+    assertThat(KotlinMetrics.all())
+      .extracting<String> { it.name }
+      .containsExactly(
+        "Cyclomatic Complexity",
+        "Cognitive Complexity",
+        "Halstead Volume",
+        "Maintainability Index",
+        "Code Duplication",
+        "Documentation Coverage",
+        "security",
+        "Code Smell Density",
+        "rfc",
+        "dit",
+        "mhf",
+        "Coupling Between Objects",
+        "Lack of Cohesion of Methods"
+      )
   }
 
   @Test

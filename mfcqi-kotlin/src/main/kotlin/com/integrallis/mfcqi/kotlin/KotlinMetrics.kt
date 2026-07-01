@@ -10,8 +10,24 @@ import java.nio.file.Path
  */
 object KotlinMetrics {
 
-  /** The Kotlin source metrics evaluated on every analysis (v1: Cyclomatic Complexity). */
-  @JvmStatic fun all(): List<Metric<*>> = listOf(KotlinCyclomaticComplexity())
+  /** Kotlin-aware implementations of every Java source metric category. */
+  @JvmStatic
+  fun all(): List<Metric<*>> =
+    listOf(
+      KotlinCyclomaticComplexity(),
+      KotlinCognitiveComplexity(),
+      KotlinHalsteadVolume(),
+      KotlinMaintainabilityIndex(),
+      KotlinCodeDuplication(),
+      KotlinDocumentationCoverage(),
+      KotlinSecurityMetric(),
+      KotlinCodeSmellDensity(),
+      KotlinRFCMetric(),
+      KotlinDITMetric(),
+      KotlinMHFMetric(),
+      KotlinCouplingBetweenObjects(),
+      KotlinLackOfCohesionOfMethods(),
+    )
 
   /**
    * True if [codebase] contains any Kotlin source — the calculator's analyzable-source detector.

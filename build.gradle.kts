@@ -11,16 +11,12 @@ allprojects {
 
     repositories {
         mavenCentral()
-        // mfcqi-kotlin's Kotlin parser (kotlinx-ast) is published on JitPack.
-        maven("https://jitpack.io")
     }
 }
 
 // Published to Maven Central as libraries via this shared configuration. The CLI ships as a native
-// binary / runnable distribution instead. mfcqi-kotlin is excluded *here* because it needs a bespoke
-// SHADED publication (it bundles the JitPack-only kotlinx-ast jars) — that is defined in
-// mfcqi-kotlin/build.gradle.kts and still stages into build/staging-deploy for JReleaser.
-val nonPublished = setOf("mfcqi-cli", "mfcqi-kotlin")
+// binary / runnable distribution instead.
+val nonPublished = setOf("mfcqi-cli")
 val libraryProjects = subprojects.filterNot { it.name in nonPublished }
 
 // ---------------------------------------------------------------------------
