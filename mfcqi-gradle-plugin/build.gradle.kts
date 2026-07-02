@@ -7,6 +7,7 @@ description = "First-party Gradle plugin for MFCQI — analyze, badge, and gate 
 
 dependencies {
     "implementation"(project(":mfcqi-engine"))
+    "implementation"(project(":mfcqi-security-bytecode"))
     "implementation"(project(":mfcqi-quality-gates"))
     "implementation"(project(":mfcqi-badge"))
     "implementation"(project(":mfcqi-core"))

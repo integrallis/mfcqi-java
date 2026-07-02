@@ -36,4 +36,10 @@ public abstract class MfcqiExtension {
 
   /** Whether {@code mfcqiGate} fails the build on a gate failure. Defaults to {@code true}. */
   public abstract Property<Boolean> getFailOnGate();
+
+  /**
+   * Use real SpotBugs+FindSecBugs bytecode SAST for the security metric (both Java and Kotlin) when
+   * compiled classes are available. Defaults to {@code true}; falls back to source heuristics.
+   */
+  public abstract Property<Boolean> getBytecodeSecurity();
 }

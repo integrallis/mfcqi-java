@@ -1,7 +1,6 @@
 package com.integrallis.mfcqi.gradle;
 
 import com.integrallis.mfcqi.badge.BadgeGenerator;
-import com.integrallis.mfcqi.engine.MFCQIDefaults;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -9,6 +8,7 @@ import java.nio.file.Path;
 import java.util.Locale;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
@@ -31,10 +31,26 @@ public abstract class MfcqiBadgeTask extends DefaultTask {
   @OutputFile
   public abstract RegularFileProperty getBadgeFile();
 
+  @Internal
+  public abstract ConfigurableFileCollection getClassDirs();
+
+  @Internal
+  public abstract ConfigurableFileCollection getAnalysisClasspath();
+
+  @Input
+  public abstract Property<Boolean> getBytecodeSecurity();
+
   @TaskAction
   public void run() {
     Path path = getSource().get().getAsFile().toPath();
-    double score = MFCQIDefaults.calculatorFor(path, getParallelism().get()).calculate(path);
+    double score =
+        MfcqiCalculators.build(
+                path,
+                getParallelism().get(),
+                getBytecodeSecurity().getOrElse(true),
+                getClassDirs(),
+                getAnalysisClasspath())
+            .calculate(path);
     Path out = getBadgeFile().get().getAsFile().toPath();
     try {
       if (out.getParent() != null) {

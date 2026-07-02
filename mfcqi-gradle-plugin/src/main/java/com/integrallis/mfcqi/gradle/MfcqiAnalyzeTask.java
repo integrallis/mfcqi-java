@@ -1,7 +1,6 @@
 package com.integrallis.mfcqi.gradle;
 
 import com.integrallis.mfcqi.core.MFCQICalculator;
-import com.integrallis.mfcqi.engine.MFCQIDefaults;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -10,6 +9,7 @@ import java.util.Locale;
 import java.util.Map;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
@@ -34,10 +34,25 @@ public abstract class MfcqiAnalyzeTask extends DefaultTask {
   @OutputFile
   public abstract RegularFileProperty getJsonReport();
 
+  @Internal
+  public abstract ConfigurableFileCollection getClassDirs();
+
+  @Internal
+  public abstract ConfigurableFileCollection getAnalysisClasspath();
+
+  @Input
+  public abstract Property<Boolean> getBytecodeSecurity();
+
   @TaskAction
   public void run() {
     Path path = getSource().get().getAsFile().toPath();
-    MFCQICalculator calculator = MFCQIDefaults.calculatorFor(path, getParallelism().get());
+    MFCQICalculator calculator =
+        MfcqiCalculators.build(
+            path,
+            getParallelism().get(),
+            getBytecodeSecurity().getOrElse(true),
+            getClassDirs(),
+            getAnalysisClasspath());
     Map<String, Double> detailed = calculator.detailedMetrics(path);
     double score = detailed.getOrDefault("mfcqi_score", 0.0);
 

@@ -1,7 +1,6 @@
 package com.integrallis.mfcqi.gradle;
 
 import com.integrallis.mfcqi.core.MFCQICalculator;
-import com.integrallis.mfcqi.engine.MFCQIDefaults;
 import com.integrallis.mfcqi.qualitygates.QualityGateConfig;
 import com.integrallis.mfcqi.qualitygates.QualityGateEvaluator;
 import com.integrallis.mfcqi.qualitygates.QualityGateResult;
@@ -11,6 +10,7 @@ import java.util.Locale;
 import java.util.Map;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
@@ -43,10 +43,25 @@ public abstract class MfcqiGateTask extends DefaultTask {
   @Input
   public abstract Property<Boolean> getFailOnGate();
 
+  @Internal
+  public abstract ConfigurableFileCollection getClassDirs();
+
+  @Internal
+  public abstract ConfigurableFileCollection getAnalysisClasspath();
+
+  @Input
+  public abstract Property<Boolean> getBytecodeSecurity();
+
   @TaskAction
   public void run() {
     Path path = getSource().get().getAsFile().toPath();
-    MFCQICalculator calculator = MFCQIDefaults.calculatorFor(path, getParallelism().get());
+    MFCQICalculator calculator =
+        MfcqiCalculators.build(
+            path,
+            getParallelism().get(),
+            getBytecodeSecurity().getOrElse(true),
+            getClassDirs(),
+            getAnalysisClasspath());
     Map<String, Double> detailed = calculator.detailedMetrics(path);
 
     QualityGateConfig config;

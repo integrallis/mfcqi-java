@@ -25,6 +25,7 @@ public class MfcqiPlugin implements Plugin<Project> {
     ext.getBadgeFile()
         .convention(project.getLayout().getProjectDirectory().file(".github/badges/mfcqi.json"));
     ext.getFailOnGate().convention(true);
+    ext.getBytecodeSecurity().convention(true);
 
     project
         .getTasks()
@@ -37,6 +38,7 @@ public class MfcqiPlugin implements Plugin<Project> {
               task.getSource().set(ext.getSource());
               task.getParallelism().set(ext.getParallelism());
               task.getJsonReport().set(ext.getJsonReport());
+              task.getBytecodeSecurity().set(ext.getBytecodeSecurity());
               task.getOutputs().upToDateWhen(t -> false);
             });
 
@@ -52,6 +54,7 @@ public class MfcqiPlugin implements Plugin<Project> {
               task.getSource().set(ext.getSource());
               task.getParallelism().set(ext.getParallelism());
               task.getBadgeFile().set(ext.getBadgeFile());
+              task.getBytecodeSecurity().set(ext.getBytecodeSecurity());
               task.getOutputs().upToDateWhen(t -> false);
             });
 
@@ -68,7 +71,55 @@ public class MfcqiPlugin implements Plugin<Project> {
               task.getParallelism().set(ext.getParallelism());
               task.getGateFile().set(ext.getGateFile());
               task.getFailOnGate().set(ext.getFailOnGate());
+              task.getBytecodeSecurity().set(ext.getBytecodeSecurity());
               task.getOutputs().upToDateWhen(t -> false);
             });
+
+    // When a JVM plugin is applied, feed compiled classes (Java + Kotlin) to the tasks so the
+    // bytecode security scanner can run, and make analysis depend on compilation.
+    project
+        .getPlugins()
+        .withType(
+            org.gradle.api.plugins.JavaBasePlugin.class,
+            plugin -> {
+              org.gradle.api.tasks.SourceSetContainer sourceSets =
+                  project.getExtensions().getByType(org.gradle.api.tasks.SourceSetContainer.class);
+              org.gradle.api.tasks.SourceSet main = sourceSets.findByName("main");
+              if (main == null) {
+                return;
+              }
+              wireClasses(project, "mfcqiAnalyze", MfcqiAnalyzeTask.class, main);
+              wireClasses(project, "mfcqiBadge", MfcqiBadgeTask.class, main);
+              wireClasses(project, "mfcqiGate", MfcqiGateTask.class, main);
+            });
+  }
+
+  private static <T extends org.gradle.api.Task> void wireClasses(
+      Project project, String name, Class<T> type, org.gradle.api.tasks.SourceSet main) {
+    project
+        .getTasks()
+        .named(name, type)
+        .configure(
+            task -> {
+              org.gradle.api.file.ConfigurableFileCollection classDirs = classDirs(task);
+              org.gradle.api.file.ConfigurableFileCollection classpath = analysisClasspath(task);
+              classDirs.from(main.getOutput().getClassesDirs());
+              classpath.from(main.getCompileClasspath());
+              task.dependsOn(main.getClassesTaskName());
+            });
+  }
+
+  private static org.gradle.api.file.ConfigurableFileCollection classDirs(
+      org.gradle.api.Task task) {
+    if (task instanceof MfcqiAnalyzeTask) return ((MfcqiAnalyzeTask) task).getClassDirs();
+    if (task instanceof MfcqiBadgeTask) return ((MfcqiBadgeTask) task).getClassDirs();
+    return ((MfcqiGateTask) task).getClassDirs();
+  }
+
+  private static org.gradle.api.file.ConfigurableFileCollection analysisClasspath(
+      org.gradle.api.Task task) {
+    if (task instanceof MfcqiAnalyzeTask) return ((MfcqiAnalyzeTask) task).getAnalysisClasspath();
+    if (task instanceof MfcqiBadgeTask) return ((MfcqiBadgeTask) task).getAnalysisClasspath();
+    return ((MfcqiGateTask) task).getAnalysisClasspath();
   }
 }

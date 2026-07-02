@@ -18,6 +18,7 @@ import com.integrallis.mfcqi.metrics.MaintainabilityIndex;
 import com.integrallis.mfcqi.metrics.RFCMetric;
 import com.integrallis.mfcqi.secrets.SecretsExposureMetric;
 import com.integrallis.mfcqi.security.SecurityMetric;
+import com.integrallis.mfcqi.security.SecurityScanner;
 import com.integrallis.mfcqi.smells.CodeSmellDensity;
 import java.nio.file.Path;
 import java.util.List;
@@ -46,9 +47,7 @@ public final class MFCQIDefaults {
 
   /** Build a {@link MFCQICalculator} with the default metric registry and worker count. */
   public static MFCQICalculator calculator(int parallelism) {
-    MFCQICalculator.Builder builder = MFCQICalculator.builder().parallelism(parallelism);
-    javaSourceMetrics().forEach(builder::addMetric);
-    return addSharedMetrics(builder).build();
+    return javaBuilder(parallelism).build();
   }
 
   /** Build a {@link MFCQICalculator} for Kotlin codebases with the same metric contract as Java. */
@@ -58,12 +57,7 @@ public final class MFCQIDefaults {
 
   /** Build a Kotlin {@link MFCQICalculator} with the requested worker count. */
   public static MFCQICalculator kotlinCalculator(int parallelism) {
-    MFCQICalculator.Builder builder = MFCQICalculator.builder();
-    builder.parallelism(parallelism);
-    for (Metric<?> metric : KotlinMetrics.all()) {
-      builder.addMetric(metric);
-    }
-    return addSharedMetrics(builder).analyzableSource(KotlinMetrics::hasSource).build();
+    return kotlinBuilder(parallelism).build();
   }
 
   /** Build a calculator that combines corresponding Java and Kotlin source metrics. */
@@ -73,12 +67,51 @@ public final class MFCQIDefaults {
 
   /** Build a mixed-language calculator with the requested worker count. */
   public static MFCQICalculator mixedCalculator(int parallelism) {
+    return mixedBuilder(parallelism).build();
+  }
+
+  /** Auto-select Java, Kotlin, or mixed analysis from source files under {@code path}. */
+  public static MFCQICalculator calculatorFor(Path path, int parallelism) {
+    return builderFor(path, parallelism).build();
+  }
+
+  /** Auto-select Java, Kotlin, or mixed analysis with serial metric execution. */
+  public static MFCQICalculator calculatorFor(Path path) {
+    return calculatorFor(path, 1);
+  }
+
+  /**
+   * Auto-select a calculator, replacing the source-based security metric with the given scanner
+   * (e.g. a bytecode SpotBugs+FindSecBugs scanner supplied by a build plugin, which has compiled
+   * classes). A {@code null} scanner leaves the default source security metric in place.
+   */
+  public static MFCQICalculator calculatorFor(
+      Path path, int parallelism, SecurityScanner securityScanner) {
+    MFCQICalculator.Builder builder = builderFor(path, parallelism);
+    if (securityScanner != null) {
+      builder.addMetric(new SecurityMetric(securityScanner, SecurityMetric.DEFAULT_THRESHOLD));
+    }
+    return builder.build();
+  }
+
+  private static MFCQICalculator.Builder javaBuilder(int parallelism) {
+    MFCQICalculator.Builder builder = MFCQICalculator.builder().parallelism(parallelism);
+    javaSourceMetrics().forEach(builder::addMetric);
+    return addSharedMetrics(builder);
+  }
+
+  private static MFCQICalculator.Builder kotlinBuilder(int parallelism) {
+    MFCQICalculator.Builder builder = MFCQICalculator.builder().parallelism(parallelism);
+    KotlinMetrics.all().forEach(builder::addMetric);
+    return addSharedMetrics(builder).analyzableSource(KotlinMetrics::hasSource);
+  }
+
+  private static MFCQICalculator.Builder mixedBuilder(int parallelism) {
     List<Metric<?>> javaMetrics = javaSourceMetrics();
     List<Metric<?>> kotlinMetrics = KotlinMetrics.all();
     if (javaMetrics.size() != kotlinMetrics.size()) {
       throw new IllegalStateException("Java and Kotlin metric registries are not aligned");
     }
-
     MFCQICalculator.Builder builder = MFCQICalculator.builder().parallelism(parallelism);
     for (int i = 0; i < javaMetrics.size(); i++) {
       Metric<?> javaMetric = javaMetrics.get(i);
@@ -91,23 +124,16 @@ public final class MFCQIDefaults {
     }
     return addSharedMetrics(builder)
         .analyzableSource(
-            path -> !JavaSourceFiles.findAll(path).isEmpty() || KotlinMetrics.hasSource(path))
-        .build();
+            path -> !JavaSourceFiles.findAll(path).isEmpty() || KotlinMetrics.hasSource(path));
   }
 
-  /** Auto-select Java, Kotlin, or mixed analysis from source files under {@code path}. */
-  public static MFCQICalculator calculatorFor(Path path, int parallelism) {
+  private static MFCQICalculator.Builder builderFor(Path path, int parallelism) {
     boolean java = !JavaSourceFiles.findAll(path).isEmpty();
     boolean kotlin = KotlinMetrics.hasSource(path);
     if (java && kotlin) {
-      return mixedCalculator(parallelism);
+      return mixedBuilder(parallelism);
     }
-    return kotlin ? kotlinCalculator(parallelism) : calculator(parallelism);
-  }
-
-  /** Auto-select Java, Kotlin, or mixed analysis with serial metric execution. */
-  public static MFCQICalculator calculatorFor(Path path) {
-    return calculatorFor(path, 1);
+    return kotlin ? kotlinBuilder(parallelism) : javaBuilder(parallelism);
   }
 
   private static List<Metric<?>> javaSourceMetrics() {
