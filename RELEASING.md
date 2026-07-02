@@ -15,7 +15,7 @@ That run publishes every automated artifact:
 
 ```
 Release (dry_run off)
-  → JReleaser deploy            → Maven Central (the 11 library modules)
+  → JReleaser deploy            → Maven Central (13 library modules + both plugins)
   → gh release create           → GitHub prerelease + JVM zip/tar (mfcqi-<version>.zip/.tar)
   → dispatch native.yml         → linux-x64 / macos-arm64 / windows-x64 native binaries → attached
        → publish-packages       → Homebrew tap + Scoop bucket bumped to the new version
@@ -35,7 +35,8 @@ install/test, and promotes the release.
 
 | Artifact | Destination | Built by |
 |---|---|---|
-| 11 library modules (`mfcqi-core`, …, `mfcqi-kotlin`) | Maven Central (`com.integrallis`) | `release.yml` (JReleaser) |
+| 13 library modules (`mfcqi-core`, …, `mfcqi-engine`, `mfcqi-maven-plugin`) | Maven Central (`com.integrallis`) | `release.yml` (JReleaser) |
+| Gradle plugin (`com.integrallis.mfcqi`) — plugin jar + marker | Maven Central | `release.yml` (JReleaser) |
 | CLI JVM distribution (`mfcqi-<v>.zip`/`.tar`, needs a JRE) | GitHub release | `release.yml` (`gh`) |
 | CLI native binaries (linux-x64, macos-arm64, windows-x64) | GitHub release | `native.yml` (GraalVM) |
 | CLI native binary (macos-x64) | GitHub release | `scripts/build-macos-intel.sh` (GraalVM) |

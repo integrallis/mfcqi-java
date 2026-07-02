@@ -166,6 +166,49 @@ The badge automatically uses color coding:
 - 🟠 **Orange** (≥0.40): Fair quality
 - 🔴 **Red** (<0.40): Poor quality
 
+## Build-tool plugins
+
+First-party **Gradle** and **Maven** plugins run MFCQI inside your build — auto-detecting Java,
+Kotlin, or mixed source. Both expose the same three tasks/goals: **analyze**, **badge**, and
+**gate** (evaluates `.mfcqi.yaml` and fails the build below threshold).
+
+### Gradle
+
+```kotlin
+// settings.gradle.kts — until the plugin is on the Gradle Plugin Portal, resolve it from Central:
+pluginManagement { repositories { mavenCentral(); gradlePluginPortal() } }
+
+// build.gradle.kts
+plugins { id("com.integrallis.mfcqi") version "<version>" }
+
+mfcqi {
+    parallelism = 4
+    jsonReport = layout.buildDirectory.file("reports/mfcqi/mfcqi.json")
+}
+```
+
+```bash
+./gradlew mfcqiAnalyze   # score + per-metric breakdown (+ optional JSON)
+./gradlew mfcqiBadge     # write .github/badges/mfcqi.json
+./gradlew mfcqiGate      # evaluate .mfcqi.yaml; fails the build on a gate failure
+```
+
+### Maven
+
+```xml
+<plugin>
+  <groupId>com.integrallis</groupId>
+  <artifactId>mfcqi-maven-plugin</artifactId>
+  <version>VERSION</version>
+</plugin>
+```
+
+```bash
+mvn mfcqi:analyze
+mvn mfcqi:badge
+mvn mfcqi:gate
+```
+
 ## The MFCQI Formula
 
 MFCQI uses a Drake Equation-inspired geometric mean to ensure all quality factors matter:

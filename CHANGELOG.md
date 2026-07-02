@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **First-party Gradle plugin** (`com.integrallis.mfcqi`): `plugins { id("com.integrallis.mfcqi") }`
+  registers `mfcqiAnalyze`, `mfcqiBadge`, and `mfcqiGate`, wrapping the calculator, badge generator,
+  and `.mfcqi.yaml` quality gate, configured via an `mfcqi { }` extension. Auto-detects Java/Kotlin/mixed.
+- **First-party Maven plugin** (`com.integrallis:mfcqi-maven-plugin`): the same three goals —
+  `mvn mfcqi:analyze`, `mvn mfcqi:badge`, `mvn mfcqi:gate`.
+- **`mfcqi-engine`** module: the shared metric registry (`MFCQIDefaults`) extracted from the CLI so
+  the CLI and both plugins assemble the calculator identically.
+
+### Changed
+- `MFCQIDefaults` moved from `mfcqi-cli` to the published `mfcqi-engine` module.
+
 ## [0.5.0] - 2026-07-01
 
 ### Added
