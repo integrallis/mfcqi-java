@@ -53,7 +53,8 @@ public abstract class MfcqiAnalyzeTask extends DefaultTask {
         if (out.getParent() != null) {
           Files.createDirectories(out.getParent());
         }
-        Files.writeString(out, MfcqiJson.of(detailed), StandardCharsets.UTF_8);
+        Files.writeString(
+            out, com.integrallis.mfcqi.engine.MetricJson.of(detailed), StandardCharsets.UTF_8);
         getLogger().lifecycle("MFCQI JSON report written to {}", out);
       } catch (IOException e) {
         throw new GradleException("Failed to write MFCQI JSON report to " + out, e);

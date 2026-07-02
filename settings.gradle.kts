@@ -19,6 +19,7 @@ include("mfcqi-badge")
 include("mfcqi-kotlin")
 include("mfcqi-engine")
 include("mfcqi-gradle-plugin")
+include("mfcqi-maven-plugin")
 include("mfcqi-cli")
 
 buildCache {

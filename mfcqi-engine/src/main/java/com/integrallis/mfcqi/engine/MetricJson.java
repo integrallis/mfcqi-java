@@ -1,14 +1,15 @@
-package com.integrallis.mfcqi.gradle;
+package com.integrallis.mfcqi.engine;
 
 import java.util.Locale;
 import java.util.Map;
 
-/** Minimal JSON serialization for the metric map (avoids a Jackson dependency in the plugin). */
-final class MfcqiJson {
+/** Minimal JSON serialization for the metric map, shared by the Gradle and Maven plugins. */
+public final class MetricJson {
 
-  private MfcqiJson() {}
+  private MetricJson() {}
 
-  static String of(Map<String, Double> metrics) {
+  /** Serialize a metric-name → score map as a stable JSON object. */
+  public static String of(Map<String, Double> metrics) {
     StringBuilder sb = new StringBuilder("{\n");
     int i = 0;
     for (Map.Entry<String, Double> entry : metrics.entrySet()) {
