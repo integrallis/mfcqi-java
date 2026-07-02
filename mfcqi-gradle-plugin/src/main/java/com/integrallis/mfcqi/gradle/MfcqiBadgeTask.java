@@ -16,8 +16,10 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.DisableCachingByDefault;
 
 /** {@code mfcqiBadge} — writes a shields.io endpoint badge JSON from the MFCQI score. */
+@DisableCachingByDefault(because = "MFCQI analysis scans the source tree on each run")
 public abstract class MfcqiBadgeTask extends DefaultTask {
 
   @Internal

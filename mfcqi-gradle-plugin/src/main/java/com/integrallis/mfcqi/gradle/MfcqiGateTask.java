@@ -21,10 +21,12 @@ import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.DisableCachingByDefault;
 
 /**
  * {@code mfcqiGate} — evaluates {@code .mfcqi.yaml} quality gates and fails the build on failure.
  */
+@DisableCachingByDefault(because = "MFCQI analysis scans the source tree on each run")
 public abstract class MfcqiGateTask extends DefaultTask {
 
   @Internal

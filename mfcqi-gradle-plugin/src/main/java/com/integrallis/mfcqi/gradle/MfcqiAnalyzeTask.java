@@ -18,8 +18,10 @@ import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.DisableCachingByDefault;
 
 /** {@code mfcqiAnalyze} — computes the MFCQI score and per-metric breakdown. */
+@DisableCachingByDefault(because = "MFCQI analysis scans the source tree on each run")
 public abstract class MfcqiAnalyzeTask extends DefaultTask {
 
   @Internal
