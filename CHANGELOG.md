@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Real bytecode SAST for security** (`mfcqi-security-bytecode`): SpotBugs + FindSecBugs analyze
+  compiled bytecode for both Java and Kotlin, replacing the syntactic security heuristics. The
+  Gradle and Maven plugins enable it automatically when the project is compiled
+  (`mfcqi { bytecodeSecurity = true }` / `-Dmfcqi.bytecodeSecurity`); it falls back to source-based
+  scanning when no classes are present. SpotBugs is kept off the native-CLI / GraalVM path.
+
+### Changed
+- `SecurityMetric` now accepts a `SecurityScanner` (source or bytecode), reusing its CVSS-density
+  scoring across strategies.
+
+## [0.6.0] - 2026-07-01
+
+### Added
 - **First-party Gradle plugin** (`com.integrallis.mfcqi`): `plugins { id("com.integrallis.mfcqi") }`
   registers `mfcqiAnalyze`, `mfcqiBadge`, and `mfcqiGate`, wrapping the calculator, badge generator,
   and `.mfcqi.yaml` quality gate, configured via an `mfcqi { }` extension. Auto-detects Java/Kotlin/mixed.

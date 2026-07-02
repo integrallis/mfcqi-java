@@ -10,10 +10,12 @@ mavenPlugin {
 
 dependencies {
     "implementation"(project(":mfcqi-engine"))
+    "implementation"(project(":mfcqi-security-bytecode"))
     "implementation"(project(":mfcqi-quality-gates"))
     "implementation"(project(":mfcqi-badge"))
     "implementation"(project(":mfcqi-core"))
     "compileOnly"("org.apache.maven:maven-plugin-api:3.9.9")
+    "compileOnly"("org.apache.maven:maven-core:3.9.9")
     "compileOnly"("org.apache.maven.plugin-tools:maven-plugin-annotations:3.13.1")
 }
 

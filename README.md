@@ -170,7 +170,9 @@ The badge automatically uses color coding:
 
 First-party **Gradle** and **Maven** plugins run MFCQI inside your build — auto-detecting Java,
 Kotlin, or mixed source. Both expose the same three tasks/goals: **analyze**, **badge**, and
-**gate** (evaluates `.mfcqi.yaml` and fails the build below threshold).
+**gate** (evaluates `.mfcqi.yaml` and fails the build below threshold). Because they run in the
+build, they use **real SpotBugs + FindSecBugs bytecode SAST** for the security metric (Java *and*
+Kotlin) when the project is compiled — `mfcqi { bytecodeSecurity = true }` (on by default).
 
 ### Gradle
 

@@ -1,7 +1,6 @@
 package com.integrallis.mfcqi.maven;
 
 import com.integrallis.mfcqi.core.MFCQICalculator;
-import com.integrallis.mfcqi.engine.MFCQIDefaults;
 import com.integrallis.mfcqi.qualitygates.QualityGateConfig;
 import com.integrallis.mfcqi.qualitygates.QualityGateEvaluator;
 import com.integrallis.mfcqi.qualitygates.QualityGateResult;
@@ -15,11 +14,17 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.project.MavenProject;
 
 /**
  * {@code mfcqi:gate} — evaluates {@code .mfcqi.yaml} quality gates and fails the build on failure.
  */
-@Mojo(name = "gate", defaultPhase = LifecyclePhase.VERIFY, threadSafe = true)
+@Mojo(
+    name = "gate",
+    defaultPhase = LifecyclePhase.VERIFY,
+    threadSafe = true,
+    requiresDependencyResolution = ResolutionScope.COMPILE)
 public class MfcqiGateMojo extends AbstractMojo {
 
   @Parameter(defaultValue = "${project.basedir}", property = "mfcqi.source")
@@ -36,10 +41,19 @@ public class MfcqiGateMojo extends AbstractMojo {
   @Parameter(property = "mfcqi.failOnGate", defaultValue = "true")
   private boolean failOnGate;
 
+  /** The current Maven project — used to locate compiled classes for bytecode security. */
+  @Parameter(defaultValue = "${project}", readonly = true, required = true)
+  private MavenProject project;
+
+  /** Use real SpotBugs+FindSecBugs bytecode SAST when the project is compiled. */
+  @Parameter(property = "mfcqi.bytecodeSecurity", defaultValue = "true")
+  private boolean bytecodeSecurity;
+
   @Override
   public void execute() throws MojoFailureException {
     Path path = source.toPath();
-    MFCQICalculator calculator = MFCQIDefaults.calculatorFor(path, Math.max(1, parallelism));
+    MFCQICalculator calculator =
+        MavenCalculators.build(path, Math.max(1, parallelism), bytecodeSecurity, project);
     Map<String, Double> detailed = calculator.detailedMetrics(path);
 
     QualityGateConfig config;

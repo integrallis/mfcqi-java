@@ -71,6 +71,9 @@ native CLI build. Kotlin compiler/PSI and Detekt are not runtime dependencies.
   frontend does not parse Gradle or general Kotlin script grammar.
 - Metrics that require semantic type resolution use syntactic Kotlin equivalents. For example, CBO
   uses declared type references and DIT follows declared inheritance.
+- The **security** metric is a syntactic heuristic in the source-only CLI, but the Gradle and Maven
+  plugins run **real SpotBugs + FindSecBugs bytecode SAST** (Kotlin and Java) on the compiled
+  classes — see the plugins in the [README](README.md#build-tool-plugins).
 - Kotlin Multiplatform source sets are analyzed as ordinary Kotlin source. MFCQI does not yet
   de-duplicate `expect`/`actual` declarations.
 - The LLM tool-output collector is JavaParser-based. Pure Kotlin analysis sends metric scores but
