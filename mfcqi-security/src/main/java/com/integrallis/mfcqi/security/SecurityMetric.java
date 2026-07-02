@@ -47,7 +47,7 @@ public final class SecurityMetric extends Metric<Double> {
   /** Default vulnerability-density threshold — verbatim from Python {@code threshold=0.03}. */
   public static final double DEFAULT_THRESHOLD = 0.03;
 
-  private final JavaSecurityScanner scanner;
+  private final SecurityScanner scanner;
   private final double threshold;
 
   /** Last scan's findings, exposed for downstream LLM/recommendation context. */
@@ -57,7 +57,7 @@ public final class SecurityMetric extends Metric<Double> {
     this(new JavaSecurityScanner(), DEFAULT_THRESHOLD);
   }
 
-  public SecurityMetric(JavaSecurityScanner scanner, double threshold) {
+  public SecurityMetric(SecurityScanner scanner, double threshold) {
     this.scanner = scanner;
     this.threshold = threshold;
   }

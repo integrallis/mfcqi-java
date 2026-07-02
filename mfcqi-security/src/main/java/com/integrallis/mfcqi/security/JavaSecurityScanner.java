@@ -50,7 +50,7 @@ import org.slf4j.LoggerFactory;
  *       setFeature(...)} hardening calls (XXE, CWE-611)
  * </ul>
  */
-public final class JavaSecurityScanner {
+public final class JavaSecurityScanner implements SecurityScanner {
 
   private static final Logger LOG = LoggerFactory.getLogger(JavaSecurityScanner.class);
 
